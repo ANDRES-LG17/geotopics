@@ -17,9 +17,11 @@ export function generateStaticParams() {
 export default async function Image({
   params,
 }: {
-  params: { locale: Locale };
+  // `params` est une Promise dans Next.js 16 : il faut l'attendre.
+  params: Promise<{ locale: Locale }>;
 }) {
-  const t = await getTranslations({ locale: params.locale, namespace: "site" });
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "site" });
 
   return new ImageResponse(
     (

@@ -2,7 +2,9 @@
 title: "Du DWG à la géodatabase : cinq pièges d'interopérabilité CAO–SIG"
 description: "Ce qui casse réellement quand on convertit des plans CAO en couches SIG, et comment le prévenir dès la conception du processus."
 date: "2026-05-18"
-tags: ["CAO", "SIG", "FME", "Interopérabilité"]
+category: "cad"
+tools: ["FME", "AutoCAD Map 3D", "Python", "ArcGIS Pro"]
+storyMapUrl: null
 ---
 
 Faire dialoguer un plan AutoCAD et une géodatabase paraît simple : un DWG contient des géométries, un SIG stocke des géométries. En pratique, la conversion échoue presque toujours au même endroit — non pas sur la géométrie, mais sur tout ce qui l'entoure.

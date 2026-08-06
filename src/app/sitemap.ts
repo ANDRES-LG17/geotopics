@@ -1,16 +1,13 @@
 import type { MetadataRoute } from "next";
 import { routing, type Locale } from "@/i18n/routing";
 import { siteConfig } from "@/lib/site";
-import { getPostsByLocale } from "@/lib/blog";
+import { getEntriesByLocale } from "@/lib/content";
 
 /** Pages fixes du site (chemin sans préfixe de langue). */
 const STATIC_PATHS = [
   { path: "", priority: 1.0 },
-  { path: "/portfolio", priority: 0.9 },
-  { path: "/storymaps", priority: 0.9 },
-  { path: "/about", priority: 0.8 },
-  { path: "/blog", priority: 0.7 },
-  { path: "/contact", priority: 0.6 },
+  { path: "/blog", priority: 0.9 },
+  { path: "/about", priority: 0.7 },
 ];
 
 function urlFor(locale: Locale, path: string) {
@@ -37,19 +34,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       entries.push({
         url: urlFor(locale, path),
         lastModified: now,
-        changeFrequency: "monthly",
+        changeFrequency: "weekly",
         priority,
         alternates: alternatesFor(path),
       });
     }
 
-    for (const post of getPostsByLocale(locale)) {
-      const path = `/blog/${post.slug}`;
+    for (const entry of getEntriesByLocale(locale)) {
+      const path = `/blog/${entry.slug}`;
       entries.push({
         url: urlFor(locale, path),
-        lastModified: new Date(`${post.date}T00:00:00Z`),
+        lastModified: new Date(`${entry.date}T00:00:00Z`),
         changeFrequency: "yearly",
-        priority: 0.5,
+        priority: 0.8,
         alternates: alternatesFor(path),
       });
     }

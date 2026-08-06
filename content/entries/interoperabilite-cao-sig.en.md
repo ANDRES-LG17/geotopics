@@ -2,7 +2,9 @@
 title: "From DWG to geodatabase: five CAD–GIS interoperability traps"
 description: "What actually breaks when converting CAD drawings into GIS layers, and how to prevent it when designing the pipeline."
 date: "2026-05-18"
-tags: ["CAD", "GIS", "FME", "Interoperability"]
+category: "cad"
+tools: ["FME", "AutoCAD Map 3D", "Python", "ArcGIS Pro"]
+storyMapUrl: null
 ---
 
 Getting an AutoCAD drawing to talk to a geodatabase sounds simple: a DWG holds geometry, a GIS stores geometry. In practice, the conversion almost always fails in the same place — not on the geometry itself, but on everything surrounding it.

@@ -2,7 +2,9 @@
 title: "Validating geometric quality with Python"
 description: "A minimal validation script that catches invalid geometries, duplicates and micro-segments before they pollute an analysis."
 date: "2026-03-09"
-tags: ["Python", "Quality control", "Shapely", "GIS"]
+category: "gis"
+tools: ["Python", "GeoPandas", "Shapely", "QGIS"]
+storyMapUrl: null
 ---
 
 A spatial analysis is only as good as its input data. Yet quality control is still often a quick visual inspection in the GIS software — the equivalent of proofreading a spreadsheet by scrolling past it.

@@ -5,18 +5,15 @@ import Logo from "./Logo";
 import { siteConfig } from "@/lib/site";
 
 const NAV = [
-  { href: "/storymaps", key: "storymaps" },
-  { href: "/portfolio", key: "portfolio" },
   { href: "/blog", key: "blog" },
   { href: "/about", key: "about" },
-  { href: "/contact", key: "contact" },
 ] as const;
 
 export default async function Footer() {
   const t = await getTranslations("footer");
   const tNav = await getTranslations("nav");
 
-  // On n'affiche que les réseaux réellement renseignés dans siteConfig.
+  // On n'affiche que les liens réellement renseignés dans siteConfig.
   const socials = [
     { label: "LinkedIn", href: siteConfig.social.linkedin },
     { label: "GitHub", href: siteConfig.social.github },

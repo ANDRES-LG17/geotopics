@@ -2,7 +2,9 @@
 title: "Contrôler la qualité géométrique d'une couche avec Python"
 description: "Un script de validation minimal qui détecte les géométries invalides, les doublons et les micro-segments avant qu'ils ne polluent une analyse."
 date: "2026-03-09"
-tags: ["Python", "Contrôle qualité", "Shapely", "SIG"]
+category: "gis"
+tools: ["Python", "GeoPandas", "Shapely", "QGIS"]
+storyMapUrl: null
 ---
 
 Une analyse spatiale ne vaut que ce que valent ses données d'entrée. Pourtant, le contrôle qualité reste souvent une inspection visuelle rapide dans le logiciel SIG — ce qui revient à relire un tableur en le survolant.

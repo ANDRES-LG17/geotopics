@@ -7,14 +7,11 @@ import Container from "./Container";
 import Logo from "./Logo";
 import LocaleSwitcher from "./LocaleSwitcher";
 
-/** Ordre de la navigation principale. Les libellés viennent des traductions. */
+/** Navigation principale. Trois entrées : c'est un carnet, pas un site vitrine. */
 const NAV = [
   { href: "/", key: "home" },
-  { href: "/storymaps", key: "storymaps" },
-  { href: "/portfolio", key: "portfolio" },
   { href: "/blog", key: "blog" },
   { href: "/about", key: "about" },
-  { href: "/contact", key: "contact" },
 ] as const;
 
 export default function Header() {
@@ -47,8 +44,7 @@ export default function Header() {
             <Logo />
           </Link>
 
-          {/* Navigation bureau */}
-          <nav aria-label="Navigation" className="hidden lg:block">
+          <nav aria-label="Navigation" className="hidden sm:block">
             <ul className="flex items-center gap-1">
               {NAV.map(({ href, key }) => (
                 <li key={href}>
@@ -56,9 +52,7 @@ export default function Header() {
                     href={href}
                     aria-current={isActive(href) ? "page" : undefined}
                     className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive(href)
-                        ? "text-brand"
-                        : "text-fg-muted hover:text-fg"
+                      isActive(href) ? "text-brand" : "text-fg-muted hover:text-fg"
                     }`}
                   >
                     {t(key)}
@@ -71,14 +65,13 @@ export default function Header() {
           <div className="flex items-center gap-3">
             <LocaleSwitcher />
 
-            {/* Bouton hamburger — masqué sur grand écran */}
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
               aria-controls="mobile-nav"
               aria-label={open ? t("closeMenu") : t("openMenu")}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-fg lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-fg sm:hidden"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -89,23 +82,18 @@ export default function Header() {
                 strokeLinecap="round"
                 aria-hidden="true"
               >
-                {open ? (
-                  <path d="M6 6l12 12M18 6L6 18" />
-                ) : (
-                  <path d="M4 7h16M4 12h16M4 17h16" />
-                )}
+                {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
               </svg>
             </button>
           </div>
         </div>
       </Container>
 
-      {/* Navigation mobile */}
       {open && (
         <nav
           id="mobile-nav"
           aria-label="Navigation"
-          className="border-t border-line bg-surface lg:hidden"
+          className="border-t border-line bg-surface sm:hidden"
         >
           <Container>
             <ul className="flex flex-col py-2">
