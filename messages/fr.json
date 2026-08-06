@@ -1,0 +1,181 @@
+{
+  "site": {
+    "name": "GeoTopics",
+    "author": "Andrés Lozada",
+    "tagline": "Géomatique, CAO et cartographie narrative",
+    "description": "Portfolio professionnel en géomatique : SIG, CAO, télédétection et Story Maps interactives. Basé au Québec, disponible pour des mandats en français et en anglais."
+  },
+  "nav": {
+    "home": "Accueil",
+    "storymaps": "Story Maps",
+    "portfolio": "Portfolio",
+    "blog": "Blogue",
+    "about": "À propos",
+    "contact": "Contact",
+    "menu": "Menu",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "skipToContent": "Aller au contenu principal",
+    "switchLanguage": "Changer de langue",
+    "currentLanguage": "Français"
+  },
+  "home": {
+    "metaTitle": "Géomatique, CAO et Story Maps",
+    "metaDescription": "Portfolio de projets en systèmes d'information géographique, dessin technique CAO et cartographie narrative interactive. Solutions géospatiales pour l'ingénierie, l'aménagement et les municipalités.",
+    "hero": {
+      "eyebrow": "Géomaticien · SIG + CAO",
+      "title": "Transformer la donnée géospatiale en décisions concrètes",
+      "subtitle": "Je conçois des cartes, des modèles et des récits interactifs qui rendent l'information territoriale lisible — de la donnée brute au livrable prêt pour la prise de décision.",
+      "ctaPrimary": "Voir le portfolio",
+      "ctaSecondary": "Me contacter"
+    },
+    "stats": {
+      "projects": "Projets livrés",
+      "storymaps": "Story Maps publiées",
+      "tools": "Outils maîtrisés",
+      "languages": "Langues de travail"
+    },
+    "expertise": {
+      "heading": "Domaines d'expertise",
+      "subtitle": "Un profil hybride, à la jonction du SIG, du dessin technique et de la communication cartographique.",
+      "gis": {
+        "title": "Systèmes d'information géographique",
+        "body": "Analyse spatiale, géotraitement, modélisation de données et automatisation avec ArcGIS Pro, QGIS et Python."
+      },
+      "cad": {
+        "title": "CAO et dessin technique",
+        "body": "Plans d'ingénierie, levés topographiques et intégration CAO–SIG avec AutoCAD, Civil 3D et MicroStation."
+      },
+      "web": {
+        "title": "Cartographie web",
+        "body": "Applications cartographiques interactives avec ArcGIS Online, Leaflet et Mapbox GL, optimisées pour le web et le mobile."
+      },
+      "story": {
+        "title": "Cartographie narrative",
+        "body": "Story Maps qui traduisent des analyses complexes en récits visuels accessibles aux publics non techniques."
+      }
+    },
+    "featured": {
+      "heading": "Projets en vedette",
+      "subtitle": "Une sélection de mandats représentatifs en SIG, CAO et cartographie web.",
+      "viewAll": "Voir tous les projets"
+    },
+    "cta": {
+      "heading": "Un projet géospatial en tête ?",
+      "body": "Je suis disponible pour des mandats en géomatique au Québec, en français comme en anglais.",
+      "button": "Démarrons la conversation"
+    }
+  },
+  "storymaps": {
+    "metaTitle": "Story Maps",
+    "metaDescription": "Récits cartographiques interactifs : analyses territoriales, données environnementales et projets d'aménagement présentés sous forme de Story Maps ArcGIS.",
+    "heading": "Story Maps",
+    "intro": "La cartographie narrative combine carte, données et récit. Chaque Story Map ci-dessous présente une analyse territoriale complète, pensée pour être comprise sans expertise technique préalable.",
+    "openStory": "Ouvrir la Story Map",
+    "openInNewTab": "Ouvrir en plein écran",
+    "loading": "Chargement de la carte…",
+    "empty": "Les Story Maps seront publiées prochainement."
+  },
+  "portfolio": {
+    "metaTitle": "Portfolio de projets",
+    "metaDescription": "Projets en systèmes d'information géographique, dessin technique CAO et applications cartographiques web. Méthodologie, outils et livrables détaillés.",
+    "heading": "Portfolio",
+    "intro": "Une sélection de projets couvrant l'analyse spatiale, le dessin technique et le développement d'applications cartographiques.",
+    "filters": {
+      "all": "Tous",
+      "gis": "SIG",
+      "cad": "CAO",
+      "web": "Web / Arc Web"
+    },
+    "noResults": "Aucun projet dans cette catégorie pour le moment.",
+    "viewProject": "Voir le projet",
+    "toolsUsed": "Outils utilisés",
+    "year": "Année"
+  },
+  "blog": {
+    "metaTitle": "Blogue technique",
+    "metaDescription": "Articles techniques sur la géomatique : analyse spatiale, automatisation Python, interopérabilité CAO–SIG et cartographie web.",
+    "heading": "Blogue",
+    "intro": "Notes techniques, méthodes de travail et retours d'expérience sur la géomatique appliquée.",
+    "readMore": "Lire l'article",
+    "backToBlog": "Retour au blogue",
+    "publishedOn": "Publié le",
+    "readingTime": "{minutes} min de lecture",
+    "empty": "Aucun article publié pour l'instant. Revenez bientôt.",
+    "notFoundTitle": "Article introuvable",
+    "notFoundBody": "Cet article n'existe pas ou n'a pas encore été traduit dans cette langue."
+  },
+  "about": {
+    "metaTitle": "À propos",
+    "metaDescription": "Parcours professionnel, compétences techniques et formation en géomatique. CV téléchargeable en français et en anglais.",
+    "heading": "À propos",
+    "role": "Géomaticien · Spécialiste SIG et CAO",
+    "bio1": "Je travaille à l'intersection de la géomatique et du dessin technique. Mon travail consiste à transformer des données territoriales hétérogènes — levés, imagerie, bases de données municipales, plans CAO — en produits cartographiques fiables et exploitables.",
+    "bio2": "Ce qui me distingue : je maîtrise autant la chaîne SIG (analyse spatiale, géotraitement, automatisation Python) que la chaîne CAO (plans d'ingénierie, topographie, Civil 3D), et je sais faire dialoguer les deux. Cette double compétence est rare et précieuse dans les projets d'infrastructure et d'aménagement.",
+    "bio3": "Établi au Québec, je travaille en français et en anglais, et je m'intéresse particulièrement aux mandats municipaux, en génie-conseil et en gestion des ressources territoriales.",
+    "downloadCv": "Télécharger le CV (PDF)",
+    "sections": {
+      "skills": "Compétences techniques",
+      "experience": "Expérience professionnelle",
+      "education": "Formation",
+      "languages": "Langues"
+    },
+    "skillGroups": {
+      "gis": "SIG et analyse spatiale",
+      "cad": "CAO et topographie",
+      "dev": "Développement et données",
+      "web": "Cartographie web"
+    },
+    "languageLevels": {
+      "french": "Français",
+      "frenchLevel": "Courant — langue de travail",
+      "english": "Anglais",
+      "englishLevel": "Courant — langue de travail",
+      "spanish": "Espagnol",
+      "spanishLevel": "Langue maternelle"
+    },
+    "present": "Aujourd'hui"
+  },
+  "contact": {
+    "metaTitle": "Contact",
+    "metaDescription": "Contactez-moi pour un mandat en géomatique, une collaboration ou une opportunité professionnelle au Québec.",
+    "heading": "Contact",
+    "intro": "Une question, un mandat ou une opportunité ? Écrivez-moi — je réponds généralement sous 48 heures.",
+    "directEmail": "Courriel direct",
+    "location": "Localisation",
+    "locationValue": "Québec, Canada",
+    "availability": "Disponibilité",
+    "availabilityValue": "Ouvert aux opportunités",
+    "form": {
+      "name": "Nom complet",
+      "namePlaceholder": "Marie Tremblay",
+      "email": "Courriel",
+      "emailPlaceholder": "marie.tremblay@exemple.ca",
+      "subject": "Sujet",
+      "subjectPlaceholder": "Mandat en cartographie web",
+      "message": "Message",
+      "messagePlaceholder": "Décrivez votre projet ou votre demande…",
+      "submit": "Envoyer le message",
+      "sending": "Envoi en cours…",
+      "successTitle": "Message envoyé",
+      "successBody": "Merci ! Votre message a bien été transmis. Je vous réponds sous peu.",
+      "errorTitle": "Envoi impossible",
+      "errorGeneric": "Une erreur est survenue. Réessayez ou écrivez-moi directement par courriel.",
+      "required": "Ce champ est obligatoire.",
+      "invalidEmail": "Veuillez saisir une adresse courriel valide.",
+      "tooShort": "Le message doit contenir au moins 20 caractères."
+    }
+  },
+  "footer": {
+    "tagline": "Géomatique, CAO et cartographie narrative.",
+    "navHeading": "Navigation",
+    "connectHeading": "Me suivre",
+    "rights": "Tous droits réservés.",
+    "builtWith": "Conçu avec Next.js et déployé sur Vercel."
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Cette page n'existe pas ou a été déplacée.",
+    "back": "Retour à l'accueil"
+  }
+}

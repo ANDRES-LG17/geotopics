@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   GeoTopics — système de design
+   Palette inspirée de la cartographie topographique :
+   encre marine, courbes de niveau turquoise, accent ambre (plans CAO).
+   ========================================================================== */
+
+@theme inline {
+  /* Tokens sémantiques : ils pointent vers des variables CSS,
+     ce qui permet de basculer clair/sombre sans dupliquer les utilitaires. */
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-raised: var(--surface-raised);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-line: var(--line);
+
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-accent: var(--accent);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+:root {
+  --surface: #ffffff;
+  --surface-muted: #f4f7f8;
+  --surface-raised: #ffffff;
+  --fg: #0b1220;
+  --fg-muted: #46586b;
+  --fg-subtle: #6b7f92;
+  --line: #dde5ea;
+
+  --brand: #0d7d84;
+  --brand-soft: #e2f2f2;
+  --brand-ink: #06363a;
+  --accent: #d97706;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #070b14;
+    --surface-muted: #0d1522;
+    --surface-raised: #111c2c;
+    --fg: #e8eef4;
+    --fg-muted: #9dafc0;
+    --fg-subtle: #7288a0;
+    --line: #1e2c3e;
+
+    --brand: #34c6c9;
+    --brand-soft: #0d2f33;
+    --brand-ink: #a9eced;
+    --accent: #f0a12e;
+  }
+}
+
+* {
+  border-color: var(--line);
+}
+
+body {
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ancrage confortable quand on saute vers une section via #id
+   (l'en-tête est fixe, il faut compenser sa hauteur). */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Motif de courbes de niveau — utilisé en fond du hero et des sections CTA.
+   SVG inline en data-URI : aucun fichier externe, aucune requête réseau.
+   -------------------------------------------------------------------------- */
+.topo-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.07' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Focus visible et cohérent sur tout le site (accessibilité clavier). */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Typographie des articles de blogue (HTML généré depuis le markdown).
+   -------------------------------------------------------------------------- */
+.prose-article {
+  line-height: 1.75;
+  color: var(--fg-muted);
+}
+.prose-article > * + * {
+  margin-top: 1.25em;
+}
+.prose-article h2 {
+  margin-top: 2.5em;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+}
+.prose-article h3 {
+  margin-top: 2em;
+  font-size: 1.2rem;
+  font-weight: 650;
+  color: var(--fg);
+}
+.prose-article a {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose-article strong {
+  color: var(--fg);
+  font-weight: 650;
+}
+.prose-article ul,
+.prose-article ol {
+  padding-left: 1.5rem;
+}
+.prose-article ul {
+  list-style: disc;
+}
+.prose-article ol {
+  list-style: decimal;
+}
+.prose-article li + li {
+  margin-top: 0.4em;
+}
+.prose-article code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+}
+.prose-article pre {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+}
+.prose-article pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.prose-article blockquote {
+  border-left: 3px solid var(--brand);
+  padding-left: 1rem;
+  font-style: italic;
+}
+.prose-article img {
+  border-radius: 10px;
+  max-width: 100%;
+  height: auto;
+}

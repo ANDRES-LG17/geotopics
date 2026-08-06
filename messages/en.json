@@ -1,0 +1,181 @@
+{
+  "site": {
+    "name": "GeoTopics",
+    "author": "Andrés Lozada",
+    "tagline": "Geomatics, CAD and narrative cartography",
+    "description": "Professional geomatics portfolio: GIS, CAD, remote sensing and interactive Story Maps. Based in Quebec, available for mandates in French and English."
+  },
+  "nav": {
+    "home": "Home",
+    "storymaps": "Story Maps",
+    "portfolio": "Portfolio",
+    "blog": "Blog",
+    "about": "About",
+    "contact": "Contact",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "skipToContent": "Skip to main content",
+    "switchLanguage": "Switch language",
+    "currentLanguage": "English"
+  },
+  "home": {
+    "metaTitle": "Geomatics, CAD and Story Maps",
+    "metaDescription": "Portfolio of geographic information systems, technical CAD drafting and interactive narrative cartography. Geospatial solutions for engineering, planning and municipalities.",
+    "hero": {
+      "eyebrow": "Geomatics Specialist · GIS + CAD",
+      "title": "Turning geospatial data into decisions that hold up",
+      "subtitle": "I build maps, models and interactive stories that make territorial information legible — from raw data to decision-ready deliverables.",
+      "ctaPrimary": "View portfolio",
+      "ctaSecondary": "Get in touch"
+    },
+    "stats": {
+      "projects": "Projects delivered",
+      "storymaps": "Story Maps published",
+      "tools": "Tools mastered",
+      "languages": "Working languages"
+    },
+    "expertise": {
+      "heading": "Areas of expertise",
+      "subtitle": "A hybrid profile at the intersection of GIS, technical drafting and cartographic communication.",
+      "gis": {
+        "title": "Geographic Information Systems",
+        "body": "Spatial analysis, geoprocessing, data modelling and automation with ArcGIS Pro, QGIS and Python."
+      },
+      "cad": {
+        "title": "CAD and technical drafting",
+        "body": "Engineering plans, topographic surveys and CAD–GIS integration with AutoCAD, Civil 3D and MicroStation."
+      },
+      "web": {
+        "title": "Web mapping",
+        "body": "Interactive mapping applications with ArcGIS Online, Leaflet and Mapbox GL, optimized for web and mobile."
+      },
+      "story": {
+        "title": "Narrative cartography",
+        "body": "Story Maps that translate complex analysis into visual narratives accessible to non-technical audiences."
+      }
+    },
+    "featured": {
+      "heading": "Featured projects",
+      "subtitle": "A selection of representative work in GIS, CAD and web mapping.",
+      "viewAll": "View all projects"
+    },
+    "cta": {
+      "heading": "Have a geospatial project in mind?",
+      "body": "I am available for geomatics mandates in Quebec, in both French and English.",
+      "button": "Start the conversation"
+    }
+  },
+  "storymaps": {
+    "metaTitle": "Story Maps",
+    "metaDescription": "Interactive cartographic narratives: territorial analysis, environmental data and planning projects presented as ArcGIS Story Maps.",
+    "heading": "Story Maps",
+    "intro": "Narrative cartography combines map, data and story. Each Story Map below presents a complete territorial analysis, designed to be understood without prior technical expertise.",
+    "openStory": "Open Story Map",
+    "openInNewTab": "Open fullscreen",
+    "loading": "Loading map…",
+    "empty": "Story Maps will be published soon."
+  },
+  "portfolio": {
+    "metaTitle": "Project portfolio",
+    "metaDescription": "Projects in geographic information systems, technical CAD drafting and web mapping applications. Detailed methodology, tools and deliverables.",
+    "heading": "Portfolio",
+    "intro": "A selection of projects spanning spatial analysis, technical drafting and mapping application development.",
+    "filters": {
+      "all": "All",
+      "gis": "GIS",
+      "cad": "CAD",
+      "web": "Web / Arc Web"
+    },
+    "noResults": "No projects in this category yet.",
+    "viewProject": "View project",
+    "toolsUsed": "Tools used",
+    "year": "Year"
+  },
+  "blog": {
+    "metaTitle": "Technical blog",
+    "metaDescription": "Technical articles on geomatics: spatial analysis, Python automation, CAD–GIS interoperability and web mapping.",
+    "heading": "Blog",
+    "intro": "Technical notes, working methods and field lessons from applied geomatics.",
+    "readMore": "Read article",
+    "backToBlog": "Back to blog",
+    "publishedOn": "Published on",
+    "readingTime": "{minutes} min read",
+    "empty": "No articles published yet. Check back soon.",
+    "notFoundTitle": "Article not found",
+    "notFoundBody": "This article does not exist or has not been translated into this language yet."
+  },
+  "about": {
+    "metaTitle": "About",
+    "metaDescription": "Professional background, technical skills and education in geomatics. CV available for download in French and English.",
+    "heading": "About",
+    "role": "Geomatics Specialist · GIS and CAD",
+    "bio1": "I work at the intersection of geomatics and technical drafting. My job is to turn heterogeneous territorial data — surveys, imagery, municipal databases, CAD drawings — into reliable, usable cartographic products.",
+    "bio2": "What sets me apart: I am equally fluent in the GIS chain (spatial analysis, geoprocessing, Python automation) and the CAD chain (engineering plans, surveying, Civil 3D), and I know how to make the two talk to each other. That dual competency is rare and valuable on infrastructure and planning projects.",
+    "bio3": "Based in Quebec, I work in both French and English, with particular interest in municipal mandates, consulting engineering and territorial resource management.",
+    "downloadCv": "Download CV (PDF)",
+    "sections": {
+      "skills": "Technical skills",
+      "experience": "Professional experience",
+      "education": "Education",
+      "languages": "Languages"
+    },
+    "skillGroups": {
+      "gis": "GIS and spatial analysis",
+      "cad": "CAD and surveying",
+      "dev": "Development and data",
+      "web": "Web mapping"
+    },
+    "languageLevels": {
+      "french": "French",
+      "frenchLevel": "Fluent — working language",
+      "english": "English",
+      "englishLevel": "Fluent — working language",
+      "spanish": "Spanish",
+      "spanishLevel": "Native"
+    },
+    "present": "Present"
+  },
+  "contact": {
+    "metaTitle": "Contact",
+    "metaDescription": "Get in touch about a geomatics mandate, a collaboration or a professional opportunity in Quebec.",
+    "heading": "Contact",
+    "intro": "A question, a mandate or an opportunity? Send me a message — I usually reply within 48 hours.",
+    "directEmail": "Direct email",
+    "location": "Location",
+    "locationValue": "Quebec, Canada",
+    "availability": "Availability",
+    "availabilityValue": "Open to opportunities",
+    "form": {
+      "name": "Full name",
+      "namePlaceholder": "Marie Tremblay",
+      "email": "Email",
+      "emailPlaceholder": "marie.tremblay@example.ca",
+      "subject": "Subject",
+      "subjectPlaceholder": "Web mapping mandate",
+      "message": "Message",
+      "messagePlaceholder": "Describe your project or request…",
+      "submit": "Send message",
+      "sending": "Sending…",
+      "successTitle": "Message sent",
+      "successBody": "Thank you! Your message came through. I will get back to you shortly.",
+      "errorTitle": "Could not send",
+      "errorGeneric": "Something went wrong. Please try again or email me directly.",
+      "required": "This field is required.",
+      "invalidEmail": "Please enter a valid email address.",
+      "tooShort": "Message must be at least 20 characters."
+    }
+  },
+  "footer": {
+    "tagline": "Geomatics, CAD and narrative cartography.",
+    "navHeading": "Navigation",
+    "connectHeading": "Connect",
+    "rights": "All rights reserved.",
+    "builtWith": "Built with Next.js, deployed on Vercel."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This page does not exist or has been moved.",
+    "back": "Back to home"
+  }
+}
