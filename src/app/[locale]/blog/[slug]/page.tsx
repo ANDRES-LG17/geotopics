@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import Container from "@/components/Container";
 import StoryMapEmbed from "@/components/StoryMapEmbed";
 import ShareOnLinkedIn from "@/components/ShareOnLinkedIn";
+import { ArticleJsonLd } from "@/components/JsonLd";
 import { getEntry, getAllEntryParams } from "@/lib/content";
 import { formatDate } from "@/lib/entries";
 import { createPageMetadata } from "@/lib/metadata";
@@ -55,6 +56,8 @@ export default async function EntryPage({ params }: Props) {
 
   return (
     <Container className="py-16 sm:py-20">
+      <ArticleJsonLd entry={entry} locale={locale} />
+
       <article className="mx-auto max-w-2xl">
         <Link
           href="/blog"

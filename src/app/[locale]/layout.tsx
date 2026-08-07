@@ -37,7 +37,16 @@ export async function generateMetadata({
     applicationName: t("name"),
     authors: [{ name: siteConfig.author }],
     creator: siteConfig.author,
-    alternates: buildAlternates(locale, "/"),
+    alternates: {
+      ...buildAlternates(locale, "/"),
+      // Rend le flux découvrable automatiquement par les lecteurs RSS
+      // et par les connecteurs d'automatisation (Buffer, Zapier, Make).
+      types: {
+        "application/rss+xml": [
+          { url: `${siteConfig.url}/${locale}/rss.xml`, title: t("name") },
+        ],
+      },
+    },
     robots: { index: true, follow: true },
   };
 }

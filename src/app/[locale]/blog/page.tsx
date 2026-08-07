@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import Container from "@/components/Container";
 import SectionHeading from "@/components/SectionHeading";
 import EntryList from "@/components/EntryList";
+import { BlogJsonLd } from "@/components/JsonLd";
 import { getEntriesByLocale } from "@/lib/content";
 import { createPageMetadata } from "@/lib/metadata";
 import type { Locale } from "@/i18n/routing";
@@ -30,6 +31,11 @@ export default async function BlogPage({ params }: Props) {
 
   return (
     <Container className="py-16 sm:py-20">
+      <BlogJsonLd
+        locale={locale}
+        name={t("heading")}
+        description={t("metaDescription")}
+      />
       <SectionHeading as="h1" title={t("heading")} subtitle={t("intro")} />
       <EntryList entries={entries} locale={locale} />
     </Container>

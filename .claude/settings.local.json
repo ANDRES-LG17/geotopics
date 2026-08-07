@@ -42,7 +42,12 @@
       "Bash(rm -rf public/cv)",
       "Bash(git -c user.name=\"Andrés Lozada\" -c user.email=\"inczoand@gmail.com\" commit -q --amend --no-edit)",
       "Bash(git rev-list *)",
-      "Bash(curl -sf http://localhost:3000/fr)"
+      "Bash(curl -sf http://localhost:3000/fr)",
+      "Bash(curl -s -o /dev/null -w \"localhost:3000 -> %{http_code}\\\\n\" http://localhost:3000/fr)",
+      "Bash(curl -s http://localhost:3000/robots.txt)",
+      "Bash(curl -s -o /dev/null -w \"  /rss.xml -> %{http_code}\\\\n  /feed.xml -> \" http://localhost:3000/rss.xml)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/feed.xml)",
+      "Bash(curl -s http://localhost:3000/fr/blog/interoperabilite-cao-sig)"
     ]
   }
 }

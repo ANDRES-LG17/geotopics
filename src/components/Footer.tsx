@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Container from "./Container";
 import Logo from "./Logo";
@@ -13,11 +13,14 @@ export default async function Footer() {
   const t = await getTranslations("footer");
   const tNav = await getTranslations("nav");
 
+  const locale = await getLocale();
+
   // On n'affiche que les liens réellement renseignés dans siteConfig.
   const socials = [
     { label: "LinkedIn", href: siteConfig.social.linkedin },
     { label: "GitHub", href: siteConfig.social.github },
     { label: "ArcGIS Online", href: siteConfig.social.arcgis },
+    { label: "RSS", href: `/${locale}/rss.xml` },
   ].filter((s): s is { label: string; href: string } => Boolean(s.href));
 
   return (

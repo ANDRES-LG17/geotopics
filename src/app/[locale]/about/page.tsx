@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Container from "@/components/Container";
 import SectionHeading from "@/components/SectionHeading";
+import { PersonJsonLd } from "@/components/JsonLd";
 import { toolbox } from "@/data/toolbox";
 import { createPageMetadata } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site";
@@ -37,6 +38,8 @@ export default async function AboutPage({ params }: Props) {
 
   return (
     <Container className="py-16 sm:py-20">
+      <PersonJsonLd jobTitle={t("role")} />
+
       <div className="max-w-2xl">
         <SectionHeading as="h1" title={t("heading")} />
         <p className="mt-3 text-lg font-medium text-brand">{t("role")}</p>
