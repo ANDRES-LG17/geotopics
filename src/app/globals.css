@@ -43,13 +43,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --surface: #070b14;
-    --surface-muted: #0d1522;
-    --surface-raised: #111c2c;
+    /* Les trois plans étaient trop proches en clair-obscur : le fond, les
+       bandes et les cartes se confondaient et la page paraissait plate.
+       On écarte les valeurs pour retrouver la même hiérarchie qu'en clair. */
+    --surface: #05090f;
+    --surface-muted: #0c1523;
+    --surface-raised: #131f31;
     --fg: #e8eef4;
     --fg-muted: #9dafc0;
     --fg-subtle: #7288a0;
-    --line: #1e2c3e;
+    --line: #23334a;
 
     --brand: #34c6c9;
     --brand-soft: #0d2f33;
@@ -83,11 +86,71 @@ html {
 }
 
 /* --------------------------------------------------------------------------
-   Motif de courbes de niveau — utilisé en fond du hero et des sections CTA.
-   SVG inline en data-URI : aucun fichier externe, aucune requête réseau.
+   Motif de courbes de niveau, en data-URI (aucune requête réseau).
+
+   Un data-URI ne peut pas hériter de `currentColor` : la couleur du trait est
+   figée dans le SVG. On stocke donc deux images et on bascule l'une ou l'autre
+   selon le thème — sinon le motif à trait blanc devient invisible dès qu'il
+   est posé sur un fond clair.
    -------------------------------------------------------------------------- */
+:root {
+  /* Trait sombre, pour les fonds clairs. */
+  --topo-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%230b1220' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Trait clair, pour les fonds sombres. */
+    --topo-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.07' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
+  }
+}
+
 .topo-pattern {
+  background-image: var(--topo-image);
+}
+
+/* Les blocs volontairement sombres dans les deux thèmes (encart Story Map)
+   gardent le trait clair, quel que soit le réglage du système. */
+.topo-pattern-on-dark {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.07' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --------------------------------------------------------------------------
+   Apparition au défilement.
+
+   Piloté par le composant `Reveal` : il pose `data-reveal="pending"` sur
+   l'élément tant qu'il est hors champ, puis `"shown"` quand il entre.
+   Un élément sans attribut reste visible — le contenu ne dépend jamais du JS.
+
+   Le mouvement est volontairement court (16 px) et lent à finir : on cherche
+   l'accompagnement du regard, pas l'effet.
+   -------------------------------------------------------------------------- */
+[data-reveal] {
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+[data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Réglage d'accessibilité respecté : aucun déplacement, aucun fondu,
+   le contenu est simplement là. */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    transition: none;
+  }
+  [data-reveal="pending"] {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Focus visible et cohérent sur tout le site (accessibilité clavier). */

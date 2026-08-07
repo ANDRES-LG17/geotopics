@@ -47,7 +47,12 @@
       "Bash(curl -s http://localhost:3000/robots.txt)",
       "Bash(curl -s -o /dev/null -w \"  /rss.xml -> %{http_code}\\\\n  /feed.xml -> \" http://localhost:3000/rss.xml)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/feed.xml)",
-      "Bash(curl -s http://localhost:3000/fr/blog/interoperabilite-cao-sig)"
+      "Bash(curl -s http://localhost:3000/fr/blog/interoperabilite-cao-sig)",
+      "Bash(python -)",
+      "Bash(curl -s http://localhost:3000/fr)",
+      "Bash('/c/Program Files \\(x86\\)/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --virtual-time-budget=6000 --window-size=1280,900 --screenshot=C:/Users/Andres/AppData/Local/Temp/claude/e--Documents-PROFESIONAL-CV-BLOG/e69344e4-40ae-4c07-bed3-7f200d3d980c/scratchpad/shots/v4-oscuro.png http://localhost:3000/fr)",
+      "Bash('/c/Program Files \\(x86\\)/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --blink-settings=preferredColorScheme=1 --virtual-time-budget=6000 --window-size=1280,900 --screenshot=C:/Users/Andres/AppData/Local/Temp/claude/e--Documents-PROFESIONAL-CV-BLOG/e69344e4-40ae-4c07-bed3-7f200d3d980c/scratchpad/shots/v4-claro.png http://localhost:3000/fr)",
+      "Bash(awk '{print \"  \"$1}')"
     ]
   }
 }

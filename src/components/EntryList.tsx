@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import EntryCard from "./EntryCard";
+import Reveal from "./Reveal";
 import { CATEGORIES, type EntryMeta, type Category } from "@/lib/entries";
 import type { Locale } from "@/i18n/routing";
 
@@ -69,9 +70,13 @@ export default function EntryList({
       {visible.length === 0 ? (
         <p className="mt-12 text-fg-muted">{t("noResults")}</p>
       ) : (
-        <div className="mt-10 space-y-8">
-          {visible.map((entry) => (
-            <EntryCard key={entry.slug} entry={entry} locale={locale} />
+        <div className="mt-10 space-y-10">
+          {visible.map((entry, i) => (
+            // `key` inclut le filtre actif : changer d'onglet remonte une
+            // nouvelle cascade au lieu de laisser les cartes déjà affichées.
+            <Reveal key={`${active}-${entry.slug}`} delay={i * 90}>
+              <EntryCard entry={entry} locale={locale} />
+            </Reveal>
           ))}
         </div>
       )}

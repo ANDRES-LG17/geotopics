@@ -24,7 +24,7 @@ export default function StoryMapEmbed({
   // Aucune URL renseignée : état d'attente soigné plutôt qu'un cadre cassé.
   if (embedUrl === null) {
     return (
-      <div className="topo-pattern flex aspect-video items-center justify-center rounded-xl border border-line bg-[#071620]">
+      <div className="topo-pattern-on-dark flex aspect-video items-center justify-center rounded-xl border border-line bg-[#071620]">
         <p className="text-sm font-medium text-white/50">
           {t("storyComingSoon")}
         </p>
@@ -47,7 +47,7 @@ export default function StoryMapEmbed({
   }
 
   return (
-    <div className="topo-pattern flex aspect-video flex-col items-center justify-center gap-4 rounded-xl border border-line bg-[#071620]">
+    <div className="topo-pattern-on-dark flex aspect-video flex-col items-center justify-center gap-4 rounded-xl border border-line bg-[#071620]">
       <button
         type="button"
         onClick={() => setLoaded(true)}
