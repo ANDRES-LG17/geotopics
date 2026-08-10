@@ -181,4 +181,5 @@ npm run build      # build de producción
 npm run start      # servir el build
 npm run lint       # ESLint
 npm run data:demo  # regenera los datos del lab de demostración
+npm run topo       # regenera las curvas de nivel del fondo de la portada
 ```

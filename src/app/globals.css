@@ -104,20 +104,22 @@ html {
 }
 
 /* --------------------------------------------------------------------------
-   Motif de courbes de niveau, en data-URI (aucune requête réseau).
+   Fond de l'ouverture : de vraies courbes de niveau.
 
-   Un data-URI ne peut pas hériter de `currentColor` : la couleur du trait est
-   figée dans le SVG. On stocke donc deux images et on bascule l'une ou l'autre
-   selon le thème — sinon le motif à trait blanc devient invisible dès qu'il
-   est posé sur un fond clair.
+   Le fichier est calculé hors ligne par `npm run topo` — une surface
+   échantillonnée puis découpée en isolignes par marching squares — et non
+   dessiné à la main. Il ne se répète pas : c'est un relief unique, étalé sur
+   toute la largeur, avec une courbe maîtresse sur cinq légèrement plus
+   sombre, comme sur une carte.
+
+   `cover` plutôt qu'une tuile : un motif qui se répète se lit comme un papier
+   peint, et le relief perdrait justement ce qui le rend crédible.
    -------------------------------------------------------------------------- */
-:root {
-  /* Trait sombre, pour les fonds clairs. */
-  --topo-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%230e1a15' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
-}
-
 .topo-pattern {
-  background-image: var(--topo-image);
+  background-image: url("/topo/contours-v1.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* Les blocs volontairement sombres dans les deux thèmes (encart Story Map)
