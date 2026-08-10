@@ -104,19 +104,18 @@ html {
 }
 
 /* --------------------------------------------------------------------------
-   Fond de l'ouverture : de vraies courbes de niveau.
+   Fond de l'ouverture : une ville qui se dissout dans le territoire.
 
-   Le fichier est calculé hors ligne par `npm run topo` — une surface
-   échantillonnée puis découpée en isolignes par marching squares — et non
-   dessiné à la main. Il ne se répète pas : c'est un relief unique, étalé sur
-   toute la largeur, avec une courbe maîtresse sur cinq légèrement plus
-   sombre, comme sur une carte.
+   Scène axonométrique calculée hors ligne par `npm run topo` — un tissu
+   urbain extrudé qui se raréfie jusqu'à ne laisser que le relief, en courbes
+   de niveau portées à leur altitude. Voir `scripts/build-topo-scene.mjs`.
 
-   `cover` plutôt qu'une tuile : un motif qui se répète se lit comme un papier
-   peint, et le relief perdrait justement ce qui le rend crédible.
+   `cover` plutôt qu'une tuile : la scène ne se répète pas, elle déborde du
+   cadre par les quatre côtés. C'est ce débordement qui la fait lire comme un
+   fond et non comme une illustration posée au milieu.
    -------------------------------------------------------------------------- */
 .topo-pattern {
-  background-image: url("/topo/contours-v1.svg");
+  background-image: url("/topo/scene-v1.svg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

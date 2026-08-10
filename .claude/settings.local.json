@@ -95,7 +95,24 @@
       "Bash(node -e \"console.log\\('  version instalada:', require\\('sharp/package.json'\\).version\\)\")",
       "Bash(git -c user.name=\"Andrés Lozada\" -c user.email=\"inczoand@gmail.com\" revert --no-edit e24063a)",
       "Bash(git stash *)",
-      "Bash(git -c 'user.name=Andrés Lozada' -c user.email=inczoand@gmail.com commit -q -m 'Record permissions from the hillshade experiment *)"
+      "Bash(git -c 'user.name=Andrés Lozada' -c user.email=inczoand@gmail.com commit -q -m 'Record permissions from the hillshade experiment *)",
+      "Bash(curl -s -D - -o /dev/null http://localhost:3000/topo/contours-v1.svg)",
+      "Bash(node C:/Users/Andres/AppData/Local/Temp/claude/e--Documents-PROFESIONAL-CV-BLOG/e69344e4-40ae-4c07-bed3-7f200d3d980c/scratchpad/proto/run-baseline.mjs public/topo/contours-v1.svg 'LINEA BASE — curvas actuales')",
+      "Bash(cp e:/Documents/PROFESIONAL/CV/BLOG/scripts/build-topo-contours.mjs C:/Users/Andres/AppData/Local/Temp/claude/e--Documents-PROFESIONAL-CV-BLOG/e69344e4-40ae-4c07-bed3-7f200d3d980c/scratchpad/proto/candidate.mjs)",
+      "Bash(node candidate.mjs)",
+      "Bash(awk '{print \"  candidate.svg: \"$5\" bytes\"}')",
+      "Bash(node run-baseline.mjs \"e:/Documents/PROFESIONAL/CV/BLOG/public/topo/contours-v1.svg\" \"A — actual \\(solo curvas\\)\")",
+      "Bash(node run-baseline.mjs candidate.svg \"B — candidato \\(curvas + trama urbana\\)\")",
+      "Bash(cp \"e:/Documents/PROFESIONAL/CV/BLOG/scripts/build-topo-contours.mjs\" axo.mjs)",
+      "Bash(node axo.mjs)",
+      "Bash(MIN=32 DEPTH=9 ZT=380 ZB=70 node axo.mjs)",
+      "Bash(node preview.mjs axo.svg axo-3.png)",
+      "Bash(node preview.mjs axo.svg axo-4.png)",
+      "Bash(node preview.mjs axo.svg axo-5.png)",
+      "Bash(node run-baseline.mjs axo.svg \"axonometrica, dominio ampliado\")",
+      "Bash(ZOOM=2.6 LEVELS=20 TOL=3 MIN=95 DEPTH=9 ZT=380 ZB=70 MAXLEAF=430 node axo.mjs)",
+      "Bash(ZOOM=2.4 ANCHORX=0.32 LEVELS=20 TOL=3 MIN=95 DEPTH=14 ZT=380 ZB=70 MAXLEAF=300 YIELD=1.4 node axo.mjs)",
+      "Bash(node scripts/build-topo-scene.mjs)"
     ]
   }
 }

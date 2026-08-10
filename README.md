@@ -117,6 +117,28 @@ No hay cálculo en la visita, así que nada de rutas a la carta, geocodificació
 
 ---
 
+## El fondo de la portada
+
+No es una textura: es una **escena axonométrica** — un tejido urbano extruido que se enrarece hasta dejar solo el relieve, con las curvas de nivel llevadas a su altura real. Un modelo LOD1 sobre un MNT.
+
+```bash
+npm run topo     # regenera public/topo/scene-v1.svg
+```
+
+**La regla que lo gobierna: tinta constante.** El ojo no cuenta trazos, percibe cantidad de tinta. Por eso las dos capas no se superponen — bajo la ciudad se dibujan *menos* curvas, no curvas más tenues, y cada nivel se retira a una densidad urbana distinta para que no se vea una costura.
+
+Los valores por defecto de [`scripts/build-topo-scene.mjs`](scripts/build-topo-scene.mjs) no son estimaciones: salen de medir la densidad de tinta columna por columna. El resultado instalado da **tinta 0,80 y variación 25,7%** (el fondo anterior, solo curvas, daba 0,63 y 20,5%). Es medidamente más denso, a cambio de que la portada hable de urbanismo.
+
+Todos los parámetros se ajustan por variable de entorno, para rehacer el barrido sin editar el archivo:
+
+```bash
+ZOOM=2.8 LEVELS=16 node scripts/build-topo-scene.mjs
+```
+
+`SEED` redibuja el terreno y la ciudad por completo.
+
+---
+
 ## Dónde editar cada cosa
 
 | Quiero cambiar…              | Archivo                  |
@@ -181,5 +203,5 @@ npm run build      # build de producción
 npm run start      # servir el build
 npm run lint       # ESLint
 npm run data:demo  # regenera los datos del lab de demostración
-npm run topo       # regenera las curvas de nivel del fondo de la portada
+npm run topo       # regenera la escena axonométrica del fondo de la portada
 ```
