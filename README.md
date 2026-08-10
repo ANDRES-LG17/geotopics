@@ -119,23 +119,21 @@ No hay cálculo en la visita, así que nada de rutas a la carta, geocodificació
 
 ## El fondo de la portada
 
-No es una textura: es una **escena axonométrica** — un tejido urbano extruido que se enrarece hasta dejar solo el relieve, con las curvas de nivel llevadas a su altura real. Un modelo LOD1 sobre un MNT.
+Un dibujo isométrico —tejido urbano que se disuelve en el relieve— encargado a un diseñador. El script no dibuja nada: prepara ese archivo para el web.
 
-```bash
-npm run topo     # regenera public/topo/scene-v1.svg
+```
+assets/scene-source.png  →  public/topo/scene-v2.avif   55 KB
+                            public/topo/scene-v2.webp  119 KB
+npm run topo
 ```
 
-**La regla que lo gobierna: tinta constante.** El ojo no cuenta trazos, percibe cantidad de tinta. Por eso las dos capas no se superponen — bajo la ciudad se dibujan *menos* curvas, no curvas más tenues, y cada nivel se retira a una densidad urbana distinta para que no se vea una costura.
+La fuente vive en `assets/` y **no** en `public/`: todo lo que hay en `public/` se sirve, y un PNG de 1,6 MB accesible públicamente no le hace bien a nadie.
 
-Los valores por defecto de [`scripts/build-topo-scene.mjs`](scripts/build-topo-scene.mjs) no son estimaciones: salen de medir la densidad de tinta columna por columna. El resultado instalado da **tinta 0,80 y variación 25,7%** (el fondo anterior, solo curvas, daba 0,63 y 20,5%). Es medidamente más denso, a cambio de que la portada hable de urbanismo.
+**Qué hace el procesado:** convierte el blanco en transparencia (la luminancia pasa a ser alfa), tiñe la tinta con el color del sitio, y hornea el desvanecido inferior en el canal alfa — sin máscara CSS, que obligaría a recomponer una capa entera bajo cada fotograma de la esfera animada.
 
-Todos los parámetros se ajustan por variable de entorno, para rehacer el barrido sin editar el archivo:
+**La opacidad final va en CSS, no en el archivo.** Al hornear el 6% en el alfa solo quedan 16 niveles de 255, y el códec con pérdidas destruye la mitad: medido, AVIF salía con alfa máximo 7 en vez de 16, emborronado sobre el 72% de los píxeles en vez del 17%. El ajuste está en `.topo-pattern { opacity }`.
 
-```bash
-ZOOM=2.8 LEVELS=16 node scripts/build-topo-scene.mjs
-```
-
-`SEED` redibuja el terreno y la ciudad por completo.
+Dos formatos porque aquí la diferencia sí pesa: 55 KB contra 119 KB. El navegador descarga uno.
 
 ---
 

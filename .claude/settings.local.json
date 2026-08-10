@@ -112,7 +112,15 @@
       "Bash(node run-baseline.mjs axo.svg \"axonometrica, dominio ampliado\")",
       "Bash(ZOOM=2.6 LEVELS=20 TOL=3 MIN=95 DEPTH=9 ZT=380 ZB=70 MAXLEAF=430 node axo.mjs)",
       "Bash(ZOOM=2.4 ANCHORX=0.32 LEVELS=20 TOL=3 MIN=95 DEPTH=14 ZT=380 ZB=70 MAXLEAF=300 YIELD=1.4 node axo.mjs)",
-      "Bash(node scripts/build-topo-scene.mjs)"
+      "Bash(node scripts/build-topo-scene.mjs)",
+      "Bash(grep -vE \"^\\\\s*\\\\*|/\\\\*\\\\*|^--$\")",
+      "Bash(curl -s -o /dev/null -w \"  /topo/scene.png -> %{http_code}  %{size_download} bytes  <- expuesto\\\\n\" http://localhost:3000/topo/scene.png)",
+      "Bash(mkdir -p assets)",
+      "Bash(git mv *)",
+      "Bash(mv public/topo/scene.png assets/scene-source.png)",
+      "Bash(node __TRACKED_VAR__/run-baseline.mjs public/topo/scene-v2.avif 'actual — sin reducir opacidad')",
+      "Bash(node __TRACKED_VAR__/run-baseline.mjs public/topo/scene-v2.avif 'tras reducir')",
+      "Bash(cd \"e:/Documents/PROFESIONAL/CV/BLOG\" *)"
     ]
   }
 }

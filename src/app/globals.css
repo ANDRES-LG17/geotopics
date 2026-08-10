@@ -106,19 +106,51 @@ html {
 /* --------------------------------------------------------------------------
    Fond de l'ouverture : une ville qui se dissout dans le territoire.
 
-   Scène axonométrique calculée hors ligne par `npm run topo` — un tissu
-   urbain extrudé qui se raréfie jusqu'à ne laisser que le relief, en courbes
-   de niveau portées à leur altitude. Voir `scripts/build-topo-scene.mjs`.
+   Dessin isométrique fourni par un graphiste, préparé pour le web par
+   `npm run topo` — voir `scripts/build-topo-scene.mjs`. Le blanc du dessin
+   est devenu transparent et le fondu vers le bas est cuit dans l'alpha, donc
+   aucun masque CSS ici : un masque forcerait une couche de composition que le
+   navigateur re-mélange sous chaque image de la sphère animée.
 
    `cover` plutôt qu'une tuile : la scène ne se répète pas, elle déborde du
    cadre par les quatre côtés. C'est ce débordement qui la fait lire comme un
    fond et non comme une illustration posée au milieu.
    -------------------------------------------------------------------------- */
 .topo-pattern {
-  background-image: url("/topo/scene-v1.svg");
+  /* Deux formats, le navigateur prend celui qu'il sait lire. L'écart n'est pas
+     anecdotique ici — 55 Ko en AVIF contre 119 Ko en WebP — donc les deux
+     fichiers valent leur place dans le dépôt.
+
+     Pas de repli en `url()` simple avant cette règle : le compilateur CSS le
+     supprime en constatant qu'`image-set()` le remplace (vérifié dans la
+     feuille servie). Les navigateurs trop anciens pour `image-set()`, même
+     préfixé, n'auront donc pas de fond — l'image est purement décorative et
+     son absence ne casse rien. */
+  background-image: image-set(
+    url("/topo/scene-v2.avif") type("image/avif"),
+    url("/topo/scene-v2.webp") type("image/webp")
+  );
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+
+  /* C'est ce réglage qui fait la différence entre un fond et une illustration.
+     Le dessin est livré à pleine densité — sa densité d'encre mesurée vaut
+     10,9 — et posé tel quel il écrase le texte.
+
+     Pourquoi 0,14 et non 0,064, qui ramènerait pile dans la fourchette 0,60 –
+     0,80 : cette fourchette a été calibrée sur l'ancien fond, fait de traits
+     continus réguliers. Ce dessin-ci est constitué de marques fines et
+     dispersées, qui se lisent nettement plus légères à densité mesurée égale.
+     À 0,064 le travail du graphiste devenait invisible, ce qui vidait de son
+     sens le fait de l'avoir commandé. La mesure donne la fourchette ; à
+     l'intérieur, l'œil tranche.
+
+     Appliqué ici et non cuit dans l'alpha du fichier : à 6 % il ne resterait
+     que 16 niveaux d'alpha sur 255, et l'encodage avec pertes en détruit la
+     moitié. Mesuré — AVIF ressortait avec un alpha maximal de 7 au lieu de 16,
+     étalé sur 72 % des pixels au lieu de 17 %. */
+  opacity: 0.14;
 }
 
 /* Les blocs volontairement sombres dans les deux thèmes (encart Story Map)
