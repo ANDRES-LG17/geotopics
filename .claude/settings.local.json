@@ -79,7 +79,8 @@
       "Bash(sed -i \"s/stroke='%230b1220'/stroke='%230e1a15'/g\" src/app/globals.css)",
       "Bash(sed -i 's/#071620/#08150f/g' src/components/StoryMapEmbed.tsx src/components/LabEmbed.tsx)",
       "Bash(sed -i 's/#f4f7f8/#f4f8f5/g' src/components/LabMap.tsx)",
-      "Bash(curl -s http://localhost:3000/fr/blog/interoperabilite-cao-sig/opengraph-image -o __TRACKED_VAR__/p3-og.png)"
+      "Bash(curl -s http://localhost:3000/fr/blog/interoperabilite-cao-sig/opengraph-image -o __TRACKED_VAR__/p3-og.png)",
+      "Bash(curl -sf -o /dev/null http://localhost:3000/fr)"
     ]
   }
 }

@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Container from "@/components/Container";
 import EntryCard from "@/components/EntryCard";
+import Opening from "@/components/Opening";
 import Reveal from "@/components/Reveal";
 import { getEntriesByLocale } from "@/lib/content";
 import { createPageMetadata } from "@/lib/metadata";
@@ -35,26 +36,7 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <>
-      {/* Ouverture : on lui donne de la présence par l'échelle et le vide,
-          pas par un argumentaire. Le motif topographique reste très en
-          retrait — il situe le sujet sans décorer. */}
-      <section className="relative overflow-hidden border-b border-line">
-        <div
-          className="topo-pattern absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent)]"
-          aria-hidden="true"
-        />
-        <Container className="relative py-24 sm:py-36">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-fg sm:text-6xl">
-              {t("greeting")}
-            </h1>
-            <p className="mt-8 max-w-2xl text-lg leading-relaxed text-fg-muted sm:text-xl">
-              {t("lead")}
-            </p>
-            <p className="mt-6 text-sm text-fg-subtle">{t("note")}</p>
-          </div>
-        </Container>
-      </section>
+      <Opening />
 
       {latest.length > 0 && (
         <Container className="py-20 sm:py-28">
