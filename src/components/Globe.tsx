@@ -90,7 +90,34 @@ const FOCAL = 3.4;
 /** Inclinaison maximale imposée par le curseur, en radians (~29°). */
 const MAX_TILT = 0.5;
 
-export default function Globe({ className = "" }: { className?: string }) {
+/**
+ * Demi-largeur du `viewBox`, calée sur le rayon réellement occupé à l'écran.
+ *
+ * La perspective élargit la silhouette : un point de la sphère unité vu sous
+ * l'angle θ se projette en sinθ·FOCAL/(FOCAL−cosθ), maximal pour
+ * cosθ = 1/FOCAL, ce qui donne ici un rayon apparent de 1,046 — et non 1.
+ *
+ * Pourquoi ça compte : si le `viewBox` est plus large que la sphère, la boîte
+ * SVG déborde du cadre mais le dessin, lui, reste sagement à l'intérieur. On
+ * la serre donc au plus près, pour que la largeur demandée au composant soit
+ * bien celle de la sphère visible.
+ */
+const HALF = Math.sqrt(1 - 1 / (FOCAL * FOCAL)) * FOCAL / (FOCAL - 1 / FOCAL) + 0.02;
+
+export default function Globe({
+  className = "",
+  /**
+   * Épaisseur du trait, en unités du `viewBox` (le rayon vaut 1).
+   *
+   * À retenir : un SVG agrandi épaissit ses traits avec lui. Plus la sphère
+   * est grande, plus il faut descendre cette valeur — une planète se dessine
+   * au trait fin, sinon elle a l'air d'un ballon.
+   */
+  strokeWidth = 0.008,
+}: {
+  className?: string;
+  strokeWidth?: number;
+}) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -198,13 +225,13 @@ export default function Globe({ className = "" }: { className?: string }) {
   return (
     <svg
       ref={svgRef}
-      viewBox="-1.55 -1.55 3.1 3.1"
+      viewBox={`${-HALF} ${-HALF} ${HALF * 2} ${HALF * 2}`}
       // Purement décoratif : aucune information n'y est portée.
       aria-hidden="true"
       focusable="false"
       className={className}
     >
-      <g stroke="currentColor" strokeWidth="0.008" strokeLinecap="round">
+      <g stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round">
         {edges.map((_, i) => (
           <line key={i} x1="0" y1="0" x2="0" y2="0" />
         ))}
