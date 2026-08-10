@@ -62,29 +62,21 @@
   --accent-ink: #06363a;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Les trois plans étaient trop proches en clair-obscur : le fond, les
-       bandes et les cartes se confondaient et la page paraissait plate.
-       On écarte les valeurs pour retrouver la même hiérarchie qu'en clair. */
-    --surface: #060b09;
-    --surface-muted: #0d1712;
-    --surface-raised: #14221c;
-    --fg: #e9f0ec;
-    --fg-muted: #9fb2a8;
-    --fg-subtle: #7d9187;
-    --line: #24352c;
+/* Site en thème clair, sans exception.
+   ------------------------------------
+   Il n'y a volontairement pas de variante sombre. Le blanc n'est pas un
+   décor ici, c'est le propos : clarté, netteté, sérieux. Suivre le réglage
+   système reviendrait à laisser un visiteur sur deux découvrir le site dans
+   une version qui ne dit pas la même chose.
 
-    /* Sur fond sombre, les deux teintes doivent remonter en clarté :
-       le vert profond deviendrait illisible tel quel. */
-    --brand: #45c78d;
-    --brand-soft: #0c3226;
-    --brand-ink: #b0edcf;
+   `color-scheme: light` prévient aussi le navigateur : sans lui, il
+   assombrit de lui-même les champs de formulaire et les barres de défilement
+   des visiteurs en mode sombre, et la page repart en gris malgré nous.
 
-    --accent: #38c2d2;
-    --accent-soft: #0a2f35;
-    --accent-ink: #a9e8ef;
-  }
+   (L'ancienne palette sombre reste dans l'historique git si elle doit
+   revenir un jour, derrière un interrupteur manuel plutôt qu'automatique.) */
+:root {
+  color-scheme: light;
 }
 
 * {
@@ -122,13 +114,6 @@ html {
 :root {
   /* Trait sombre, pour les fonds clairs. */
   --topo-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%230e1a15' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Trait clair, pour les fonds sombres. */
-    --topo-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.07' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
-  }
 }
 
 .topo-pattern {
@@ -221,11 +206,6 @@ html {
   font-family: var(--font-sans);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --map-icon-filter: invert(1);
-  }
-}
 
 /* --------------------------------------------------------------------------
    Typographie des articles de blogue (HTML généré depuis le markdown).
