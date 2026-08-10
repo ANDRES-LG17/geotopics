@@ -18,9 +18,7 @@
   "home": {
     "metaTitle": "A geomatics notebook",
     "metaDescription": "I document my geomatics projects here — Story Maps, GIS, CAD and web mapping — along with the problems I run into building them.",
-    "greeting": "Hello, I'm Andrés Lozada",
-    "lead": "I work in geomatics: geographic information systems, technical drafting and web mapping. This notebook is where I document my projects and think out loud about the problems I meet along the way.",
-    "note": "I write in French and English. Every entry exists in both languages.",
+    "blurb": "A geomatics notebook: GIS, CAD and web mapping. I document my projects here, and what I learn building them.",
     "latest": "Latest entries",
     "viewAll": "View all entries"
   },

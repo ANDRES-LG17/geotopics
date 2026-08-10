@@ -18,9 +18,7 @@
   "home": {
     "metaTitle": "Carnet de géomatique",
     "metaDescription": "Je documente ici mes projets en géomatique — Story Maps, SIG, CAO et cartographie web — et les problèmes que je rencontre en les construisant.",
-    "greeting": "Bonjour, je suis Andrés Lozada",
-    "lead": "Je travaille en géomatique : systèmes d'information géographique, dessin technique et cartographie web. Ce carnet est l'endroit où je documente mes projets et où je réfléchis à voix haute aux problèmes que je croise en chemin.",
-    "note": "J'écris en français et en anglais. Chaque entrée existe dans les deux langues.",
+    "blurb": "Carnet de géomatique : SIG, CAO et cartographie web. J'y documente mes projets et ce que j'apprends en les construisant.",
     "latest": "Dernières entrées",
     "viewAll": "Voir toutes les entrées"
   },
