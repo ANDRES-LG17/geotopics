@@ -119,35 +119,34 @@ function makeNoise(seed) {
 const noise = makeNoise(SEED);
 
 /**
- * Multifractale à crêtes (« ridged multifractal ») — la fonction qui fait la
- * différence entre des collines et des montagnes.
+ * Bruit fractionnaire brownien (fBm) — la somme d'octaves, sans repliement.
  *
- * Le repliement `1 − |bruit|` transforme chaque passage par zéro en arête
- * vive : c'est de là que viennent les lignes de crête. Le carré creuse les
- * vallées. Et la pondération par l'octave précédente empêche le détail fin
- * d'apparaître dans les fonds plats — dans un vrai relief, les aspérités se
- * concentrent en altitude, pas dans les plaines.
+ * C'est ici que se joue « doux » contre « escarpé ». La variante à crêtes
+ * (`1 − |bruit|`) repliait chaque passage par zéro en arête vive : c'était
+ * elle qui produisait les pics. En sommant le bruit tel quel, la surface reste
+ * dérivable partout et les courbes de niveau deviennent des boucles molles.
+ *
+ * Peu d'octaves, volontairement : chaque octave ajoutée remet du détail fin,
+ * donc des sinuosités. Trois suffisent à éviter l'aspect « patron
+ * géométrique » sans rien casser de la douceur.
  */
-function ridged(x, y, octaves = 5) {
+function fbm(x, y, octaves = 3) {
   let sum = 0;
   let amplitude = 0.5;
   let frequency = 1;
-  let weight = 1;
+  let total = 0;
 
   for (let o = 0; o < octaves; o++) {
-    let n = 1 - Math.abs(noise(x * frequency, y * frequency));
-    n *= n;
-    n *= weight;
-    weight = Math.min(1, n * 2);
-    sum += n * amplitude;
-    frequency *= 2.05;
+    sum += noise(x * frequency, y * frequency) * amplitude;
+    total += amplitude;
+    frequency *= 2;
     amplitude *= 0.5;
   }
-  return sum;
+  return sum / total;
 }
 
 /** Nombre de massifs sur la largeur. Plus haut = relief plus resserré. */
-const TERRAIN_SCALE = 2.7;
+const TERRAIN_SCALE = 2.1;
 
 /**
  * Altitude en (x, y), tous deux dans [0, 1].
@@ -165,7 +164,7 @@ function height(x, y) {
   // carte n'a plus de respiration.
   const envelope = 0.5 + 0.5 * noise(nx * 0.32 + 40, ny * 0.32 - 25);
 
-  return ridged(nx, ny) * (0.25 + 1.05 * envelope);
+  return fbm(nx, ny) * (0.45 + 0.85 * envelope);
 }
 
 /* -------------------------------------------------------------------------
@@ -366,6 +365,58 @@ function simplify(points, tolerance) {
   ];
 }
 
+/**
+ * Convertit une polyligne en courbe lisse (Catmull-Rom → Bézier cubique).
+ *
+ * Pourquoi c'est nécessaire : le marching squares rend des segments droits, et
+ * la simplification en supprime encore. Tracés tels quels, les virages se
+ * voient comme des angles — exactement les « pics » qu'on cherche à éliminer.
+ * Passer par des Béziers rend la tangente continue : plus aucun coin, quelle
+ * que soit l'agressivité de la simplification.
+ *
+ * Le facteur 1/6 est celui qui fait coïncider une Catmull-Rom uniforme avec
+ * son équivalent en Bézier cubique.
+ */
+function toSmoothPath(points) {
+  const n = points.length;
+  if (n < 3) {
+    return "M" + points.map(([x, y]) => `${r(x)} ${r(y)}`).join("L");
+  }
+
+  // Une courbe de niveau fermée doit le rester : on boucle les voisins au
+  // lieu de dupliquer les extrémités, sinon la jointure fait un angle.
+  const [fx, fy] = points[0];
+  const [lx, ly] = points[n - 1];
+  const closed = Math.hypot(fx - lx, fy - ly) < 1.5;
+
+  const at = (i) => {
+    if (closed) return points[(i + n) % n];
+    return points[Math.max(0, Math.min(n - 1, i))];
+  };
+
+  let d = `M${r(fx)} ${r(fy)}`;
+  const last = closed ? n : n - 1;
+
+  for (let i = 0; i < last; i++) {
+    const [x0, y0] = at(i - 1);
+    const [x1, y1] = at(i);
+    const [x2, y2] = at(i + 1);
+    const [x3, y3] = at(i + 2);
+
+    const c1x = x1 + (x2 - x0) / 6;
+    const c1y = y1 + (y2 - y0) / 6;
+    const c2x = x2 - (x3 - x1) / 6;
+    const c2y = y2 - (y3 - y1) / 6;
+
+    d += `C${r(c1x)} ${r(c1y)} ${r(c2x)} ${r(c2y)} ${r(x2)} ${r(y2)}`;
+  }
+
+  return closed ? d + "Z" : d;
+}
+
+/** Une décimale : sous le demi-pixel, l'écart ne se voit pas. */
+const r = (v) => Math.round(v * 10) / 10;
+
 /* -------------------------------------------------------------------------
    3. Écriture du SVG
    ------------------------------------------------------------------------- */
@@ -377,7 +428,7 @@ const num = (value, fallback) =>
     ? fallback
     : Number(value);
 
-const LEVEL_COUNT = num(process.env.LEVELS, 38);
+const LEVEL_COUNT = num(process.env.LEVELS, 22);
 const INDEX_EVERY = 5;
 
 /** Couleur et opacités : celles du site, inchangées. Seule la maîtresse fonce. */
@@ -388,7 +439,7 @@ const WIDTH_REGULAR = 1;
 const WIDTH_INDEX = 1.5;
 
 /** Sous le pixel, l'écart ne se voit pas : il ne coûte que des octets. */
-const TOLERANCE = num(process.env.TOL, 2.6);
+const TOLERANCE = num(process.env.TOL, 3);
 
 const regular = [];
 const index = [];
@@ -404,11 +455,7 @@ for (let i = 1; i < LEVEL_COUNT; i++) {
       pointsBefore += chain.length;
       const kept = simplify(chain, TOLERANCE);
       pointsAfter += kept.length;
-      // Coordonnées entières : dans un viewBox de 1600 × 900, la décimale ne
-      // se voit pas et coûte deux caractères par point.
-      return (
-        "M" + kept.map(([x, y]) => `${Math.round(x)} ${Math.round(y)}`).join("L")
-      );
+      return toSmoothPath(kept);
     })
     .join("");
 
