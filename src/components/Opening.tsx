@@ -54,27 +54,26 @@ const GLOBE_BOX = [
 
 /**
  * Trait fin : à cette taille, c'est ce qui distingue une planète d'un ballon.
- * La valeur est exprimée en unités du `viewBox`, donc elle dépend de sa
- * largeur — l'avoir resserré autour de la sphère épaissit le trait de 1,45×,
- * d'où cette valeur plus basse qu'il n'y paraît.
+ * Exprimé en fraction de la largeur rendue, donc constant à l'œil quelle que
+ * soit la taille de l'écran.
  */
-const GLOBE_STROKE = 0.0034;
+const GLOBE_STROKE = 0.0016;
 
 export default function Opening() {
   const t = useTranslations("home");
 
   return (
     <section className="relative overflow-hidden border-b border-line">
-      {/* Fond décoratif : masqué aux lecteurs d'écran, il ne porte aucun sens. */}
-      <div
-        className="topo-pattern absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent)]"
-        aria-hidden="true"
-      />
+      {/* Fond décoratif : masqué aux lecteurs d'écran, il ne porte aucun sens.
+          Le fondu vers le bas est cuit dans le fichier SVG — pas de masque CSS
+          ici, qui obligerait le navigateur à re-mélanger une couche entière à
+          chaque image de l'animation qui passe par-dessus. */}
+      <div className="topo-pattern absolute inset-0" aria-hidden="true" />
 
       {/* `pointer-events-none` : la sphère couvre la moitié de la section,
           elle ne doit pas intercepter la sélection du texte ni les clics. */}
       <div className={`${GLOBE_BOX} pointer-events-none`} aria-hidden="true">
-        <Globe strokeWidth={GLOBE_STROKE} className="w-full text-brand" />
+        <Globe strokeRatio={GLOBE_STROKE} className="w-full text-brand" />
       </div>
 
       {/* `relative` remet le texte au-dessus de la sphère en position absolue. */}

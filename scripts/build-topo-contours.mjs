@@ -377,7 +377,7 @@ const num = (value, fallback) =>
     ? fallback
     : Number(value);
 
-const LEVEL_COUNT = num(process.env.LEVELS, 44);
+const LEVEL_COUNT = num(process.env.LEVELS, 38);
 const INDEX_EVERY = 5;
 
 /** Couleur et opacités : celles du site, inchangées. Seule la maîtresse fonce. */
@@ -388,7 +388,7 @@ const WIDTH_REGULAR = 1;
 const WIDTH_INDEX = 1.5;
 
 /** Sous le pixel, l'écart ne se voit pas : il ne coûte que des octets. */
-const TOLERANCE = num(process.env.TOL, 2.2);
+const TOLERANCE = num(process.env.TOL, 2.6);
 
 const regular = [];
 const index = [];
@@ -416,10 +416,23 @@ for (let i = 1; i < LEVEL_COUNT; i++) {
   (i % INDEX_EVERY === 0 ? index : regular).push(d);
 }
 
+/**
+ * Le fondu vers le bas est cuit dans le fichier, au lieu d'être appliqué par
+ * un `mask-image` en CSS. Un masque CSS force une couche de composition que le
+ * navigateur re-mélange à chaque image dès qu'une animation passe par-dessus ;
+ * ici le dégradé est résolu une fois, au moment où l'image est rastérisée.
+ */
 const svg =
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" ` +
   `preserveAspectRatio="xMidYMid slice">` +
-  `<g fill="none" stroke="${STROKE}" stroke-linecap="round" stroke-linejoin="round">` +
+  `<defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1">` +
+  `<stop offset="0" stop-color="#fff"/>` +
+  `<stop offset="0.55" stop-color="#fff" stop-opacity="0.55"/>` +
+  `<stop offset="1" stop-color="#fff" stop-opacity="0"/>` +
+  `</linearGradient>` +
+  `<mask id="m"><rect width="${WIDTH}" height="${HEIGHT}" fill="url(#f)"/></mask>` +
+  `</defs>` +
+  `<g mask="url(#m)" fill="none" stroke="${STROKE}" stroke-linecap="round" stroke-linejoin="round">` +
   `<g stroke-width="${WIDTH_REGULAR}" stroke-opacity="${OPACITY_REGULAR}">` +
   regular.map((d) => `<path d="${d}"/>`).join("") +
   `</g>` +
