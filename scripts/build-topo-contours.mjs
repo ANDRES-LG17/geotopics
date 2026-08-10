@@ -37,7 +37,7 @@
  * détail coûte des octets sans rien ajouter que l'œil puisse voir.
  */
 
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, statSync } from "node:fs";
 import path from "node:path";
 
 /* -------------------------------------------------------------------------
@@ -439,6 +439,103 @@ const svg =
   `<g stroke-width="${WIDTH_INDEX}" stroke-opacity="${OPACITY_INDEX}">` +
   index.map((d) => `<path d="${d}"/>`).join("") +
   `</g></g></svg>`;
+
+/* -------------------------------------------------------------------------
+   4. Ombrage du relief (hillshade)
+   -------------------------------------------------------------------------
+
+   Les courbes disent l'altitude, l'ombrage dit la forme. Ensemble, la carte
+   cesse d'être un réseau de lignes et devient un terrain qu'on lit d'un coup
+   d'œil — c'est le rôle qu'a l'estompage sur une carte topographique.
+
+   Formule de Horn, celle qu'implémente l'outil Hillshade d'ArcGIS : on estime
+   la pente et l'exposition à partir des huit voisins, puis on éclaire.
+
+   Pourquoi une image matricielle et non du SVG : un ombrage est un dégradé
+   continu. En vecteur il faudrait des milliers de polygones. Et c'est ici
+   exactement l'inverse des courbes — un champ lisse est le meilleur cas pour
+   un codec d'image, là où le trait fin en est le pire.
+   ------------------------------------------------------------------------- */
+
+/** Résolution de l'ombrage. Un dégradé lisse n'a pas besoin de plus. */
+const SHADE_W = 1100;
+const SHADE_H = 619;
+
+/** Lumière au nord-ouest, à 45° — la convention cartographique. */
+const AZIMUTH = (315 * Math.PI) / 180;
+const ALTITUDE = (45 * Math.PI) / 180;
+
+/**
+ * Exagération du relief. Au-delà de 1, les pentes sont accentuées : sur un
+ * fond aussi pâle, sans cela l'ombrage serait invisible.
+ */
+const Z_FACTOR = 2.6;
+
+/**
+ * Gris le plus sombre autorisé — le seul réglage de la force de l'ombrage.
+ *
+ * 255 = invisible, 214 = franchement marqué. Autour de 240, l'ombrage se
+ * perçoit sans qu'on puisse le regarder : le relief se devine, le texte
+ * reste le premier lisible. C'est ce qu'on cherche pour un fond.
+ */
+const DARKEST = num(process.env.SHADE, 240);
+
+const shade = Buffer.alloc(SHADE_W * SHADE_H);
+const zenith = Math.PI / 2 - ALTITUDE;
+const cosZenith = Math.cos(zenith);
+const sinZenith = Math.sin(zenith);
+
+/** Pas de la grille, en unités de la surface. */
+const stepX = 1 / (SHADE_W - 1);
+const stepY = 1 / (SHADE_H - 1);
+
+for (let j = 0; j < SHADE_H; j++) {
+  const v = j / (SHADE_H - 1);
+  for (let i = 0; i < SHADE_W; i++) {
+    const u = i / (SHADE_W - 1);
+
+    // Les huit voisins, échantillonnés directement dans la surface : pas
+    // besoin de stocker une grille intermédiaire, la fonction est continue.
+    const a = height(u - stepX, v - stepY);
+    const b = height(u, v - stepY);
+    const c = height(u + stepX, v - stepY);
+    const d = height(u - stepX, v);
+    const f = height(u + stepX, v);
+    const g = height(u - stepX, v + stepY);
+    const h = height(u, v + stepY);
+    const k = height(u + stepX, v + stepY);
+
+    const dzdx = (c + 2 * f + k - (a + 2 * d + g)) / (8 * stepX);
+    const dzdy = (g + 2 * h + k - (a + 2 * b + c)) / (8 * stepY);
+
+    const slope = Math.atan(Z_FACTOR * Math.hypot(dzdx, dzdy));
+    const aspect = Math.atan2(dzdy, -dzdx);
+
+    let lit =
+      cosZenith * Math.cos(slope) +
+      sinZenith * Math.sin(slope) * Math.cos(AZIMUTH - aspect);
+    lit = Math.max(0, Math.min(1, lit));
+
+    // Le fondu vers le bas est cuit ici aussi, pour que l'ombrage disparaisse
+    // au même rythme que les courbes.
+    const fade = Math.min(1, Math.max(0, 1 - (v - 0.45) / 0.55));
+
+    // On ne descend jamais au noir : l'ombrage est ramené dans une plage
+    // étroite près du blanc, sinon il cesse d'être un fond.
+    const value = 255 - (255 - DARKEST) * (1 - lit) * fade;
+    shade[j * SHADE_W + i] = Math.round(value);
+  }
+}
+
+const sharp = (await import("sharp")).default;
+const SHADE_OUT = path.join(process.cwd(), "public", "topo", "hillshade-v1.webp");
+mkdirSync(path.dirname(SHADE_OUT), { recursive: true });
+await sharp(shade, { raw: { width: SHADE_W, height: SHADE_H, channels: 1 } })
+  .webp({ quality: 82, effort: 6 })
+  .toFile(SHADE_OUT);
+
+const shadeKb = (statSync(SHADE_OUT).size / 1024).toFixed(1);
+console.log(`  public/topo/hillshade-v1.webp (${shadeKb} Ko)`);
 
 const OUT = path.join(process.cwd(), "public", "topo", "contours-v1.svg");
 mkdirSync(path.dirname(OUT), { recursive: true });
