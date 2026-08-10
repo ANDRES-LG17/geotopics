@@ -22,14 +22,15 @@ npm run dev
 
 No hay "portafolio" separado del "blog". Todo vive en `content/entries/` como markdown y se distingue por el campo `category`:
 
-| `category`  | Se muestra como |
-| ----------- | --------------- |
-| `storymap`  | Story Maps      |
-| `gis`       | SIG             |
-| `cad`       | CAO             |
-| `web`       | Web             |
+| `category`  | Se muestra como     |
+| ----------- | ------------------- |
+| `storymap`  | Story Maps          |
+| `gis`       | SIG                 |
+| `cad`       | CAO                 |
+| `web`       | Web                 |
+| `lab`       | Cartes interactives |
 
-Una entrada `storymap` embebe su mapa automáticamente encima del texto.
+Una entrada `storymap` embebe su mapa automáticamente encima del texto. Una entrada con el campo `lab` embebe una carta MapLibre propia en ese mismo sitio — ver [Cartas interactivas](#cartas-interactivas-labs).
 
 ---
 
@@ -50,12 +51,18 @@ date: "2026-08-15"
 category: "storymap"
 tools: ["ArcGIS StoryMaps", "ArcGIS Pro"]
 storyMapUrl: null
+lab: null # id de una carta interactiva de src/labs/
+draft: false # true = solo visible en desarrollo
 ---
 
 Contenido en markdown…
 ```
 
 El slug idéntico en ambos idiomas es lo que permite que el selector FR/EN salte a la traducción de la misma entrada. El tiempo de lectura se calcula solo. Las categorías sin ninguna entrada no muestran filtro.
+
+### Borradores
+
+`draft: true` deja la entrada **solo en desarrollo**: en el sitio publicado no existe ni la página, ni el enlace, ni la línea en el RSS o el sitemap. Un solo interruptor (`NODE_ENV`), para que la regla sea fácil de tener en la cabeza.
 
 ### Publicar una Story Map
 
@@ -67,6 +74,49 @@ Mientras sea `null`, se muestra un estado "próximamente" limpio en lugar de un 
 
 ---
 
+## Cartas interactivas (labs)
+
+Un **lab** es una carta MapLibre propia, con datos precalculados, incrustada dentro de una entrada. No es una página aparte: vive bajo la introducción del artículo, en el mismo sitio que ocupa una Story Map. La regla del carnet no cambia — un proyecto es una entrada, nunca un segundo sitio al lado del primero.
+
+### La arquitectura en una línea
+
+> El cálculo pesado ocurre **una vez, en tu máquina**; el sitio solo sirve un archivo.
+
+Sin base de datos, sin backend, sin clave de API. Un lab sin fondo de mapa no hace ni una sola petición fuera del propio sitio, así que no puede dejar de funcionar porque una cuenta de terceros haya caducado.
+
+### Los tres archivos de un lab
+
+```
+scripts/build-mi-lab.mjs        1. calcula  → escribe el GeoJSON
+public/data/mi-lab-v1.geojson   2. el dato, versionado en git
+src/labs/mi-lab.ts              3. qué dibujar: capas, colores, leyenda, fuente
+```
+
+Y en el front matter de la entrada: `lab: "mi-lab"`. Nada más que conectar.
+
+### Crear uno
+
+1. `cp scripts/build-demo-isochrones.mjs scripts/build-mi-lab.mjs` y sustituye la sección de datos de entrada. Ver [`scripts/README.md`](scripts/README.md).
+2. `cp src/labs/demo-isochrones.ts src/labs/mi-lab.ts` y ajusta capas, colores, emprisa y leyenda.
+3. Regístralo en [`src/labs/index.ts`](src/labs/index.ts) — una línea.
+4. Crea la entrada FR/EN con `lab: "mi-lab"`.
+
+El gabarit completo y funcional está en `content/entries/demo-carte-interactive.*.md` (borrador: se ve con `npm run dev`, nunca en producción).
+
+### Decisiones que ya están tomadas
+
+- **MapLibre GL JS, no Mapbox GL.** Licencia BSD, sin token, sin facturación por cargas. Mapbox GL es propietario desde la v2: un token que caduca es un mapa que se rompe solo dentro de seis meses.
+- **Sin fondo de mapa por defecto.** Los datos se leen mejor sin el ruido de un fondo, y ningún tercero entra en la ecuación. Si algún día hace falta, `basemap: { kind: "style", url }` acepta cualquier estilo MapLibre — revisa entonces las condiciones de uso del proveedor, que es por donde vuelve la factura.
+- **Carga bajo demanda.** MapLibre (~250 KB) y los datos solo se descargan cuando el lector pulsa el botón. Quien viene únicamente a leer no paga ese peso.
+- **La leyenda, la nota de método y la fuente se renderizan siempre**, antes del clic: siguen siendo legibles sin JavaScript e indexables.
+- **`Cache-Control: immutable` sobre `/data/*`.** Por eso los nombres llevan versión — un archivo publicado no se sobrescribe nunca. Ver [`public/data/README.md`](public/data/README.md).
+
+### Qué NO hace esta arquitectura
+
+No hay cálculo en la visita, así que nada de rutas a la carta, geocodificación en vivo ni consultas del usuario contra una base. Si un proyecto lo necesita de verdad, merece su propio repositorio y despliegue; el carnet se queda con el artículo y el enlace.
+
+---
+
 ## Dónde editar cada cosa
 
 | Quiero cambiar…              | Archivo                  |
@@ -74,6 +124,8 @@ Mientras sea `null`, se muestra un estado "próximamente" limpio en lugar de un 
 | Textos de la interfaz (FR)   | `messages/fr.json`       |
 | Textos de la interfaz (EN)   | `messages/en.json`       |
 | Entradas (proyectos/artículos) | `content/entries/*.md` |
+| Cartas interactivas          | `src/labs/*.ts`          |
+| Datos de las cartas          | `public/data/*.geojson`  |
 | Herramientas de À propos     | `src/data/toolbox.ts`    |
 | Email, LinkedIn, GitHub, URL | `src/lib/site.ts`        |
 | Colores y tipografía         | `src/app/globals.css`    |
@@ -124,8 +176,9 @@ Luego importa el repo en [vercel.com/new](https://vercel.com/new). Vercel detect
 ## Scripts
 
 ```bash
-npm run dev     # desarrollo con Turbopack
-npm run build   # build de producción
-npm run start   # servir el build
-npm run lint    # ESLint
+npm run dev        # desarrollo con Turbopack (los borradores se ven aquí)
+npm run build      # build de producción
+npm run start      # servir el build
+npm run lint       # ESLint
+npm run data:demo  # regenera los datos del lab de demostración
 ```

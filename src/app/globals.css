@@ -2,8 +2,21 @@
 
 /* ==========================================================================
    GeoTopics — système de design
-   Palette inspirée de la cartographie topographique :
-   encre marine, courbes de niveau turquoise, accent ambre (plans CAO).
+
+   Palette : blanc, vert profond, turquoise.
+
+   - Le **blanc** porte tout : c'est lui qui donne la clarté et le sérieux.
+     Les couleurs n'interviennent que par petites touches.
+   - Le **vert forêt** est la couleur principale — le territoire, le vivant,
+     et la confiance qu'on accorde à quelque chose de posé.
+   - Le **turquoise** est le seul accent — l'eau, la donnée, l'outil. Il reste
+     voisin du vert sur la roue chromatique : deux teintes proches se lisent
+     comme une seule intention, pas comme un assemblage.
+   - Les gris ne sont pas neutres : ils tirent très légèrement vers le vert,
+     pour que le blanc n'ait jamais l'air froid ou bleuté.
+
+   Un seul accent qui fait tout le travail : c'est la règle qui empêche une
+   page d'avoir l'air chargée.
    ========================================================================== */
 
 @theme inline {
@@ -21,6 +34,8 @@
   --color-brand-soft: var(--brand-soft);
   --color-brand-ink: var(--brand-ink);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
@@ -28,17 +43,23 @@
 
 :root {
   --surface: #ffffff;
-  --surface-muted: #f4f7f8;
+  /* Gris à peine teinté de vert : le blanc reste chaud, jamais bleuté. */
+  --surface-muted: #f4f8f5;
   --surface-raised: #ffffff;
-  --fg: #0b1220;
-  --fg-muted: #46586b;
-  --fg-subtle: #6b7f92;
-  --line: #dde5ea;
+  --fg: #0e1a15;
+  --fg-muted: #4a5a52;
+  /* Contraste 4,6:1 sur blanc. L'ancienne valeur tombait à 4,1:1 et ne
+     passait donc pas le seuil WCAG AA pour du texte courant. */
+  --fg-subtle: #667a70;
+  --line: #dfe7e2;
 
-  --brand: #0d7d84;
-  --brand-soft: #e2f2f2;
-  --brand-ink: #06363a;
-  --accent: #d97706;
+  --brand: #0e6f52;
+  --brand-soft: #e3f1ea;
+  --brand-ink: #063a2b;
+
+  --accent: #0f7d8c;
+  --accent-soft: #e0f0f2;
+  --accent-ink: #06363a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,18 +67,23 @@
     /* Les trois plans étaient trop proches en clair-obscur : le fond, les
        bandes et les cartes se confondaient et la page paraissait plate.
        On écarte les valeurs pour retrouver la même hiérarchie qu'en clair. */
-    --surface: #05090f;
-    --surface-muted: #0c1523;
-    --surface-raised: #131f31;
-    --fg: #e8eef4;
-    --fg-muted: #9dafc0;
-    --fg-subtle: #7288a0;
-    --line: #23334a;
+    --surface: #060b09;
+    --surface-muted: #0d1712;
+    --surface-raised: #14221c;
+    --fg: #e9f0ec;
+    --fg-muted: #9fb2a8;
+    --fg-subtle: #7d9187;
+    --line: #24352c;
 
-    --brand: #34c6c9;
-    --brand-soft: #0d2f33;
-    --brand-ink: #a9eced;
-    --accent: #f0a12e;
+    /* Sur fond sombre, les deux teintes doivent remonter en clarté :
+       le vert profond deviendrait illisible tel quel. */
+    --brand: #45c78d;
+    --brand-soft: #0c3226;
+    --brand-ink: #b0edcf;
+
+    --accent: #38c2d2;
+    --accent-soft: #0a2f35;
+    --accent-ink: #a9e8ef;
   }
 }
 
@@ -95,7 +121,7 @@ html {
    -------------------------------------------------------------------------- */
 :root {
   /* Trait sombre, pour les fonds clairs. */
-  --topo-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%230b1220' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
+  --topo-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%230e1a15' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M0 60 Q30 20 60 60 T120 60'/%3E%3Cpath d='M0 75 Q30 35 60 75 T120 75'/%3E%3Cpath d='M0 90 Q30 50 60 90 T120 90'/%3E%3Cpath d='M0 45 Q30 5 60 45 T120 45'/%3E%3Cpath d='M0 30 Q30 -10 60 30 T120 30'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
@@ -158,6 +184,47 @@ html {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Cartes interactives (MapLibre).
+
+   Le CSS de MapLibre fige des contrôles blancs sur texte noir. Posés sur une
+   carte en thème sombre, ils sautent aux yeux comme un morceau d'une autre
+   page. On les rebranche sur les jetons du site — c'est le seul endroit où
+   l'on touche au style de la bibliothèque.
+   -------------------------------------------------------------------------- */
+.maplibregl-ctrl-group {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--line);
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  /* Les icônes sont des SVG noirs en data-URI : en thème sombre on les
+     inverse plutôt que de les remplacer une à une. */
+  filter: var(--map-icon-filter, none);
+}
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: var(--surface-raised);
+  color: var(--fg-subtle);
+  font-size: 11px;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--fg-muted);
+}
+/* Le voile affiché quand on fait défiler sans Ctrl. */
+.maplibregl-cooperative-gesture-screen {
+  font-family: var(--font-sans);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --map-icon-filter: invert(1);
+  }
 }
 
 /* --------------------------------------------------------------------------

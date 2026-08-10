@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Container from "@/components/Container";
 import StoryMapEmbed from "@/components/StoryMapEmbed";
+import LabEmbed from "@/components/LabEmbed";
 import ShareOnLinkedIn from "@/components/ShareOnLinkedIn";
 import { ArticleJsonLd } from "@/components/JsonLd";
 import { getEntry, getAllEntryParams } from "@/lib/content";
@@ -99,6 +100,15 @@ export default async function EntryPage({ params }: Props) {
         {entry.category === "storymap" && (
           <div className="mt-10">
             <StoryMapEmbed embedUrl={entry.storyMapUrl} title={entry.title} />
+          </div>
+        )}
+
+        {/* Une carte interactive prend la même place, et déborde un peu de la
+            colonne de lecture sur grand écran : 672 px suffisent à un texte,
+            pas à une carte. */}
+        {entry.lab && (
+          <div className="mt-10 lg:-mx-24">
+            <LabEmbed labId={entry.lab} title={entry.title} locale={locale} />
           </div>
         )}
 

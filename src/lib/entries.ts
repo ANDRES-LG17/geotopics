@@ -1,4 +1,5 @@
 import type { Locale } from "@/i18n/routing";
+import type { LabId } from "@/labs";
 
 /**
  * Types et utilitaires du carnet — SANS accès au système de fichiers.
@@ -12,8 +13,8 @@ import type { Locale } from "@/i18n/routing";
  *   Serveur →  content.ts   (lecture des fichiers markdown)
  */
 
-/** Les quatre familles de travaux présentées sur le site. */
-export const CATEGORIES = ["storymap", "gis", "cad", "web"] as const;
+/** Les familles de travaux présentées sur le site. */
+export const CATEGORIES = ["storymap", "gis", "cad", "web", "lab"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export type EntryMeta = {
@@ -32,6 +33,20 @@ export type EntryMeta = {
    * un état d'attente propre au lieu d'un cadre vide.
    */
   storyMapUrl: string | null;
+  /**
+   * Identifiant d'une carte interactive de `src/labs/`, affichée sous
+   * l'introduction. `null` quand l'entrée n'en porte pas.
+   *
+   * Indépendant de `category` : une entrée « SIG » peut très bien porter une
+   * carte, la catégorie dit de quoi parle le travail, pas ce qu'il embarque.
+   */
+  lab: LabId | null;
+  /**
+   * Brouillon : visible en développement, absent du site publié — ni page, ni
+   * liste, ni flux, ni sitemap. Sert à préparer une entrée, et à garder un
+   * gabarit de travail dans le dépôt sans le publier.
+   */
+  draft: boolean;
   readingMinutes: number;
 };
 

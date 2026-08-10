@@ -47,22 +47,22 @@ export default async function Image({
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: "#071620",
+          background: "#08150f",
           padding: "68px",
           color: "white",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <svg width="44" height="44" viewBox="0 0 32 32">
-            <g fill="none" stroke="#34c6c9" strokeWidth="1.7">
+            <g fill="none" stroke="#45c78d" strokeWidth="1.7">
               <path d="M2 22c5-9 10-13 14-13s9 4 14 13" opacity=".35" />
               <path d="M6 24c4-7 7-10 10-10s6 3 10 10" opacity=".6" />
               <path d="M10.5 26c2.5-4.5 4-6.5 5.5-6.5s3 2 5.5 6.5" />
             </g>
-            <circle cx="16" cy="9" r="2.6" fill="#34c6c9" />
+            <circle cx="16" cy="9" r="2.6" fill="#45c78d" />
           </svg>
           <span style={{ fontSize: 30, fontWeight: 700 }}>
-            Geo<span style={{ color: "#34c6c9" }}>Topics</span>
+            Geo<span style={{ color: "#45c78d" }}>Topics</span>
           </span>
           {category && (
             <span
@@ -72,8 +72,8 @@ export default async function Image({
                 fontWeight: 600,
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
-                color: "#34c6c9",
-                border: "1px solid #1d4f52",
+                color: "#45c78d",
+                border: "1px solid #1d4f3c",
                 borderRadius: "999px",
                 padding: "6px 16px",
               }}
@@ -101,11 +101,11 @@ export default async function Image({
               display: "flex",
               height: "6px",
               width: "72px",
-              background: "#34c6c9",
+              background: "#45c78d",
               borderRadius: "3px",
             }}
           />
-          <span style={{ fontSize: 24, color: "#9dafc0" }}>Andrés Lozada</span>
+          <span style={{ fontSize: 24, color: "#9fb2a8" }}>Andrés Lozada</span>
         </div>
       </div>
     ),

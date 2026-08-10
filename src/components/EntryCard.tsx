@@ -3,12 +3,21 @@ import { Link } from "@/i18n/navigation";
 import { formatDate, type EntryMeta, type Category } from "@/lib/entries";
 import type { Locale } from "@/i18n/routing";
 
-/** Pastille de couleur par famille de travaux, pour un repérage rapide. */
+/**
+ * Pastille par famille de travaux.
+ *
+ * La palette ne compte que deux teintes : cinq familles ne peuvent donc pas
+ * avoir cinq couleurs. On joue sur le remplissage plutôt que sur la teinte —
+ * deux aplats, deux contours, un neutre — ce qui suffit à les distinguer sans
+ * transformer la liste en nuancier. La date et le titre portent l'information
+ * principale ; la pastille ne fait que situer.
+ */
 const CATEGORY_STYLES: Record<Category, string> = {
-  storymap: "bg-accent/15 text-accent",
+  storymap: "bg-accent-soft text-accent-ink",
   gis: "bg-brand-soft text-brand-ink",
   cad: "bg-fg/10 text-fg-muted",
-  web: "bg-brand/15 text-brand",
+  web: "border border-accent/40 text-accent",
+  lab: "border border-brand/40 text-brand",
 };
 
 /**

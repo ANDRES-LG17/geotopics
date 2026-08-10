@@ -36,7 +36,8 @@
       "storymap": "Story Maps",
       "gis": "GIS",
       "cad": "CAD",
-      "web": "Web"
+      "web": "Web",
+      "lab": "Interactive maps"
     },
     "readingTime": "{minutes} min read",
     "toolsUsed": "Tools",
@@ -46,7 +47,12 @@
     "shareOnLinkedin": "Share on LinkedIn",
     "openStory": "Open Story Map",
     "openInNewTab": "Open fullscreen",
-    "storyComingSoon": "Story Map coming soon"
+    "storyComingSoon": "Story Map coming soon",
+    "openLab": "Open the map",
+    "labHint": "Loaded on demand. Ctrl + scroll to zoom.",
+    "labSource": "Source:",
+    "labDownload": "Download the data (GeoJSON)",
+    "labError": "This map's data could not be loaded."
   },
   "about": {
     "metaTitle": "About",
