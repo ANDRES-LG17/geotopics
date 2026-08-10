@@ -91,8 +91,7 @@
       "Bash(sed -i 's/^const LEVEL_COUNT = 30;/const LEVEL_COUNT = 72;/' scripts/build-topo-contours.mjs)",
       "Bash(node scripts/build-topo-contours.mjs)",
       "Bash(git -c user.name=\"Andrés Lozada\" -c user.email=\"inczoand@gmail.com\" commit -q -F -)",
-      "Bash('/c/Program Files \\(x86\\)/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --virtual-time-budget=9000 --window-size=1440,860 --screenshot=C:/Users/Andres/AppData/Local/Temp/claude/e--Documents-PROFESIONAL-CV-BLOG/e69344e4-40ae-4c07-bed3-7f200d3d980c/scratchpad/shots/canvas-globe.png http://localhost:3000/fr)",
-      "Bash(node -e \"console.log\\('  version instalada:', require\\('sharp/package.json'\\).version\\)\")"
+      "Bash('/c/Program Files \\(x86\\)/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --virtual-time-budget=9000 --window-size=1440,860 --screenshot=C:/Users/Andres/AppData/Local/Temp/claude/e--Documents-PROFESIONAL-CV-BLOG/e69344e4-40ae-4c07-bed3-7f200d3d980c/scratchpad/shots/canvas-globe.png http://localhost:3000/fr)"
     ]
   }
 }

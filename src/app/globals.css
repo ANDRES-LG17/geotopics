@@ -115,20 +115,11 @@ html {
    `cover` plutôt qu'une tuile : un motif qui se répète se lit comme un papier
    peint, et le relief perdrait justement ce qui le rend crédible.
    -------------------------------------------------------------------------- */
-/* Deux couches issues de la MÊME surface, donc calées l'une sur l'autre :
-   l'ombrage dessous dit la forme du terrain, les courbes dessus disent
-   l'altitude. C'est la superposition classique d'une carte topographique.
-
-   L'ordre compte : la première image listée est celle du dessus.
-
-   Chaque format est ici à son meilleur emploi — vecteur pour le trait fin,
-   matriciel pour le dégradé continu. L'inverse serait deux fois plus lourd
-   dans les deux cas. */
 .topo-pattern {
-  background-image: url("/topo/contours-v1.svg"), url("/topo/hillshade-v1.webp");
-  background-size: cover, cover;
-  background-position: center, center;
-  background-repeat: no-repeat, no-repeat;
+  background-image: url("/topo/contours-v1.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* Les blocs volontairement sombres dans les deux thèmes (encart Story Map)
