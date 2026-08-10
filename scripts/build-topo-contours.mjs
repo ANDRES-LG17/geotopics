@@ -12,8 +12,9 @@
  *
  * La chaîne, en trois temps — la même que pour les labs :
  *
- *   1. définir une surface (ici : une somme de gaussiennes, sommets et
- *      dépressions, plus une pente générale) ;
+ *   1. définir une surface — ici une multifractale à crêtes, qui donne des
+ *      lignes de crête vives et des vallées ramifiées là où une simple somme
+ *      de gaussiennes ne produirait que des collines rondes ;
  *   2. l'échantillonner sur une grille et en extraire les isolignes par
  *      « marching squares » ;
  *   3. écrire un SVG versionné dans `public/topo/`.
@@ -24,6 +25,16 @@
  * maîtresse** (courbe index), tracée un peu plus sombre et un peu plus épaisse.
  * C'est elle qui donne la lecture du relief ; les intercalaires restent
  * discrètes.
+ *
+ * Poids du fichier : le relief fractal est autrement plus bavard qu'un relief
+ * lisse. Deux réglages le gouvernent, ajustables par variable d'environnement
+ * pour pouvoir balayer les valeurs sans éditer le fichier :
+ *
+ *   LEVELS=44 TOL=2.2 node scripts/build-topo-contours.mjs
+ *
+ * Les valeurs par défaut donnent ~171 Ko bruts, soit ~54 Ko sur le réseau une
+ * fois compressés. À 6 % d'opacité derrière du texte, monter plus haut en
+ * détail coûte des octets sans rien ajouter que l'œil puisse voir.
  */
 
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -39,45 +50,130 @@ const HEIGHT = 900;
 const ASPECT = WIDTH / HEIGHT;
 
 /**
- * Sommets (h > 0) et cuvettes (h < 0), en coordonnées normalisées.
- * `r` est le rayon d'influence : petit = relief abrupt, donc courbes serrées.
+ * Graine du relief. Changez-la pour obtenir un tout autre massif :
+ * c'est le seul bouton qui redessine complètement la carte.
  */
-const FEATURES = [
-  { x: 0.14, y: 0.30, h: 1.00, r: 0.20 },
-  { x: 0.33, y: 0.66, h: 0.62, r: 0.15 },
-  { x: 0.52, y: 0.22, h: 0.85, r: 0.24 },
-  { x: 0.68, y: 0.78, h: 0.70, r: 0.18 },
-  { x: 0.86, y: 0.40, h: 1.10, r: 0.26 },
-  { x: 0.46, y: 0.94, h: -0.55, r: 0.17 },
-  { x: 0.02, y: 0.80, h: -0.48, r: 0.15 },
-  { x: 0.74, y: 0.05, h: -0.40, r: 0.13 },
-];
+const SEED = 20260807;
+
+/** Générateur déterministe — mêmes montagnes à chaque exécution. */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Bruit de gradient (type Perlin), sur une table de permutation mélangée.
+ * Renvoie une valeur continue et dérivable dans [−1, 1] environ.
+ */
+function makeNoise(seed) {
+  const rand = mulberry32(seed);
+  const p = [...Array(256).keys()];
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  const perm = new Uint8Array(512);
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+
+  const G = [
+    [1, 1], [-1, 1], [1, -1], [-1, -1],
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+  ];
+  const dot = (h, x, y) => {
+    const g = G[h & 7];
+    return g[0] * x + g[1] * y;
+  };
+  // Courbe d'atténuation de Perlin : dérivées nulles aux bornes, donc pas
+  // de cassure visible aux frontières de cellule.
+  const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+  const mix = (a, b, t) => a + (b - a) * t;
+
+  return (x, y) => {
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    const X = xi & 255;
+    const Y = yi & 255;
+    const xf = x - xi;
+    const yf = y - yi;
+    const u = fade(xf);
+    const v = fade(yf);
+
+    const aa = perm[perm[X] + Y];
+    const ab = perm[perm[X] + Y + 1];
+    const ba = perm[perm[X + 1] + Y];
+    const bb = perm[perm[X + 1] + Y + 1];
+
+    return mix(
+      mix(dot(aa, xf, yf), dot(ba, xf - 1, yf), u),
+      mix(dot(ab, xf, yf - 1), dot(bb, xf - 1, yf - 1), u),
+      v,
+    );
+  };
+}
+
+const noise = makeNoise(SEED);
+
+/**
+ * Multifractale à crêtes (« ridged multifractal ») — la fonction qui fait la
+ * différence entre des collines et des montagnes.
+ *
+ * Le repliement `1 − |bruit|` transforme chaque passage par zéro en arête
+ * vive : c'est de là que viennent les lignes de crête. Le carré creuse les
+ * vallées. Et la pondération par l'octave précédente empêche le détail fin
+ * d'apparaître dans les fonds plats — dans un vrai relief, les aspérités se
+ * concentrent en altitude, pas dans les plaines.
+ */
+function ridged(x, y, octaves = 5) {
+  let sum = 0;
+  let amplitude = 0.5;
+  let frequency = 1;
+  let weight = 1;
+
+  for (let o = 0; o < octaves; o++) {
+    let n = 1 - Math.abs(noise(x * frequency, y * frequency));
+    n *= n;
+    n *= weight;
+    weight = Math.min(1, n * 2);
+    sum += n * amplitude;
+    frequency *= 2.05;
+    amplitude *= 0.5;
+  }
+  return sum;
+}
+
+/** Nombre de massifs sur la largeur. Plus haut = relief plus resserré. */
+const TERRAIN_SCALE = 2.7;
 
 /**
  * Altitude en (x, y), tous deux dans [0, 1].
  *
- * Les distances sont corrigées de l'allongement du format : sans cela, les
- * gaussiennes s'étireraient horizontalement et les courbes prendraient une
- * forme d'œuf au lieu d'être rondes.
+ * L'abscisse est corrigée de l'allongement du format : sans cela le relief
+ * serait étiré horizontalement et les crêtes prendraient toutes la même
+ * direction.
  */
 function height(x, y) {
-  let h = 0;
-  for (const f of FEATURES) {
-    const dx = (x - f.x) * ASPECT;
-    const dy = y - f.y;
-    const d2 = (dx * dx + dy * dy) / (f.r * f.r);
-    h += f.h * Math.exp(-d2);
-  }
-  // Pente générale : évite un relief trop symétrique et incline l'ensemble.
-  return h + 0.30 * x - 0.16 * y;
+  const nx = x * ASPECT * TERRAIN_SCALE;
+  const ny = y * TERRAIN_SCALE;
+
+  // Enveloppe très basse fréquence : elle décide où sont les massifs et où
+  // sont les plaines. Sans elle, le relief est uniformément accidenté et la
+  // carte n'a plus de respiration.
+  const envelope = 0.5 + 0.5 * noise(nx * 0.32 + 40, ny * 0.32 - 25);
+
+  return ridged(nx, ny) * (0.25 + 1.05 * envelope);
 }
 
 /* -------------------------------------------------------------------------
    2. Échantillonnage et marching squares
    ------------------------------------------------------------------------- */
 
-const COLS = 260;
-const ROWS = 150;
+const COLS = 440;
+const ROWS = 248;
 
 const grid = [];
 for (let r = 0; r < ROWS; r++) {
@@ -275,7 +371,13 @@ function simplify(points, tolerance) {
    ------------------------------------------------------------------------- */
 
 /** Nombre d'équidistances. Une courbe sur cinq sera maîtresse. */
-const LEVEL_COUNT = 30;
+/** `??` ne rattrape pas la chaîne vide : `LEVELS=` donnerait 0 et un SVG nul. */
+const num = (value, fallback) =>
+  value === undefined || value === "" || Number.isNaN(Number(value))
+    ? fallback
+    : Number(value);
+
+const LEVEL_COUNT = num(process.env.LEVELS, 44);
 const INDEX_EVERY = 5;
 
 /** Couleur et opacités : celles du site, inchangées. Seule la maîtresse fonce. */
@@ -286,7 +388,7 @@ const WIDTH_REGULAR = 1;
 const WIDTH_INDEX = 1.5;
 
 /** Sous le pixel, l'écart ne se voit pas : il ne coûte que des octets. */
-const TOLERANCE = 0.8;
+const TOLERANCE = num(process.env.TOL, 2.2);
 
 const regular = [];
 const index = [];
