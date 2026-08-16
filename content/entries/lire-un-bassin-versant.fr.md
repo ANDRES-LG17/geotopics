@@ -5,6 +5,7 @@ date: "2026-06-22"
 category: "storymap"
 tools: ["ArcGIS StoryMaps", "ArcGIS Pro", "MNT"]
 storyMapUrl: null
+cover: null
 ---
 
 > ⚠️ **Entrée modèle.** Elle montre comment se présente un projet Story Map dans

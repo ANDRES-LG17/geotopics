@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import Container from "./Container";
 import Globe from "./Globe";
+import GeodesicMark from "./GeodesicMark";
 
 /**
  * Ouverture de la page d'accueil — la première chose qu'on voit du carnet.
@@ -79,11 +80,18 @@ export default function Opening() {
       {/* `relative` remet le texte au-dessus de la sphère en position absolue. */}
       <Container className={`relative ${PADDING}`}>
         <div className={TEXT_WIDTH}>
-          {/* Le nom reprend la coupure du logo : le vert tombe sur « Topics ». */}
+          {/* Le nom reprend la coupure du logo : le vert tombe sur « Topics »,
+              et le même filigrane géodésique que le `Logo` de l'en-tête est
+              posé derrière le G — l'ouverture est un agrandissement de la
+              marque, pas un texte différent qui lui ressemble. */}
           <h1
             className={`${TITLE_SIZE} font-bold leading-[1.05] tracking-tight text-fg`}
           >
-            Geo<span className="text-brand">Topics</span>
+            <span className="relative inline-block">
+              <GeodesicMark className="pointer-events-none absolute left-1/2 top-1/2 h-[1.6em] w-[1.6em] -translate-x-1/2 -translate-y-1/2 text-brand opacity-[0.55]" />
+              <span className="relative">G</span>
+            </span>
+            eo<span className="text-brand">Topics</span>
           </h1>
 
           <p className="mt-6 text-lg leading-relaxed text-fg-muted sm:text-xl">

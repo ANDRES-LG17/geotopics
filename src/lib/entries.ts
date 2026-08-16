@@ -42,6 +42,16 @@ export type EntryMeta = {
    */
   lab: LabId | null;
   /**
+   * Visuel de couverture, affiché en fond de la diapositive du carrousel.
+   * `null` quand l'entrée n'en porte pas : le carrousel retombe alors sur le
+   * dégradé de sa famille de travaux, qui reste un fond acceptable.
+   *
+   * Chemin servi depuis `public/` — « /covers/bassin-versant.jpg ». Une image
+   * fixe, un GIF animé ou une vidéo : le type est déduit de l'extension, voir
+   * `coverKind`.
+   */
+  cover: string | null;
+  /**
    * Brouillon : visible en développement, absent du site publié — ni page, ni
    * liste, ni flux, ni sitemap. Sert à préparer une entrée, et à garder un
    * gabarit de travail dans le dépôt sans le publier.
@@ -57,6 +67,21 @@ export type Entry = EntryMeta & {
 
 export function isCategory(value: unknown): value is Category {
   return CATEGORIES.includes(value as Category);
+}
+
+/**
+ * Nature d'un visuel de couverture, déduite de son extension.
+ *
+ * Déduite plutôt que déclarée : un deuxième champ à tenir dans l'en-tête,
+ * qu'on oublierait de corriger en changeant de fichier, pour une information
+ * que le nom porte déjà.
+ *
+ * Un GIF est renvoyé comme `image` : il s'affiche dans une balise `<img>` et
+ * s'anime tout seul. La distinction utile n'est pas fixe/animé mais quel
+ * élément HTML sait le lire.
+ */
+export function coverKind(cover: string): "image" | "video" {
+  return /\.(mp4|webm|mov|m4v)$/i.test(cover) ? "video" : "image";
 }
 
 /** Date localisée, ex. « 14 février 2026 » / « February 14, 2026 ». */

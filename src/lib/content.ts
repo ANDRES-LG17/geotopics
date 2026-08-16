@@ -48,6 +48,7 @@ type FrontMatter = {
   tools?: string[];
   storyMapUrl?: string | null;
   lab?: string | null;
+  cover?: string | null;
   draft?: boolean;
 };
 
@@ -92,6 +93,7 @@ function parseFile(filename: string): { meta: EntryMeta; body: string } | null {
       tools: front.tools ?? [],
       storyMapUrl: front.storyMapUrl ?? null,
       lab: isLabId(front.lab) ? front.lab : null,
+      cover: front.cover ?? null,
       draft: front.draft === true,
       readingMinutes: readingMinutes(content),
     },

@@ -160,6 +160,23 @@ html {
 }
 
 /* --------------------------------------------------------------------------
+   Minuteur du carrousel.
+
+   La pastille active se remplit sur la durée d'une diapositive : c'est le seul
+   indice qui dit qu'un défilement automatique tourne, et combien de temps il
+   reste. Une largeur animée plutôt qu'une barre séparée — la pastille EST la
+   jauge, il n'y a donc rien de plus à afficher.
+   -------------------------------------------------------------------------- */
+@keyframes carousel-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Apparition au défilement.
 
    Piloté par le composant `Reveal` : il pose `data-reveal="pending"` sur
@@ -169,7 +186,13 @@ html {
    Le mouvement est volontairement court (16 px) et lent à finir : on cherche
    l'accompagnement du regard, pas l'effet.
    -------------------------------------------------------------------------- */
-[data-reveal] {
+/* La transition ne vit que le temps de l'entrée. Elle disparaît ensuite —
+   `Reveal` passe l'état à « done » — parce qu'une transition de 0,7 s laissée
+   en place, doublée du `transition-delay` de la cascade (jusqu'à 420 ms),
+   restait empilée sous celle du survol de chaque carte, et retenait un calque
+   de composition dont plus personne n'avait l'usage. */
+[data-reveal="pending"],
+[data-reveal="shown"] {
   transition:
     opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
     transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
@@ -180,7 +203,10 @@ html {
   transform: translateY(16px);
 }
 
-[data-reveal="shown"] {
+/* « shown » pendant l'entrée, « done » une fois arrivé : même apparence, mais
+   sans transition ni délai résiduels. */
+[data-reveal="shown"],
+[data-reveal="done"] {
   opacity: 1;
   transform: none;
 }

@@ -18,9 +18,14 @@
   "home": {
     "metaTitle": "Carnet de géomatique",
     "metaDescription": "Je documente ici mes projets en géomatique — Story Maps, SIG, CAO et cartographie web — et les problèmes que je rencontre en les construisant.",
-    "blurb": "Carnet de géomatique : SIG, CAO et cartographie web. J'y documente mes projets et ce que j'apprends en les construisant.",
-    "latest": "Dernières entrées",
-    "viewAll": "Voir toutes les entrées"
+    "blurb": "Carnet de géomatique : SIG, CAO et cartographie web. J'y documente mes projets et ce que j'apprends en les construisant."
+  },
+  "carousel": {
+    "label": "Travaux en vedette",
+    "play": "Lancer le défilement",
+    "pause": "Suspendre le défilement",
+    "goTo": "Aller à l'entrée {number} sur {total}",
+    "viewProject": "Voir le projet"
   },
   "blog": {
     "metaTitle": "Carnet",
@@ -51,6 +56,14 @@
     "labSource": "Source :",
     "labDownload": "Télécharger les données (GeoJSON)",
     "labError": "Les données de cette carte n'ont pas pu être chargées."
+  },
+  "filters": {
+    "legend": "Filtrer les entrées",
+    "searchLabel": "Rechercher dans le carnet",
+    "searchPlaceholder": "Rechercher…",
+    "apply": "Filtrer",
+    "clear": "Réinitialiser",
+    "results": "{count, plural, =0 {Aucune entrée} one {# entrée} other {# entrées}}"
   },
   "about": {
     "metaTitle": "À propos",

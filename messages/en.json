@@ -18,9 +18,14 @@
   "home": {
     "metaTitle": "A geomatics notebook",
     "metaDescription": "I document my geomatics projects here — Story Maps, GIS, CAD and web mapping — along with the problems I run into building them.",
-    "blurb": "A geomatics notebook: GIS, CAD and web mapping. I document my projects here, and what I learn building them.",
-    "latest": "Latest entries",
-    "viewAll": "View all entries"
+    "blurb": "A geomatics notebook: GIS, CAD and web mapping. I document my projects here, and what I learn building them."
+  },
+  "carousel": {
+    "label": "Featured work",
+    "play": "Start the slideshow",
+    "pause": "Pause the slideshow",
+    "goTo": "Go to entry {number} of {total}",
+    "viewProject": "View project"
   },
   "blog": {
     "metaTitle": "Notebook",
@@ -51,6 +56,14 @@
     "labSource": "Source:",
     "labDownload": "Download the data (GeoJSON)",
     "labError": "This map's data could not be loaded."
+  },
+  "filters": {
+    "legend": "Filter entries",
+    "searchLabel": "Search the notebook",
+    "searchPlaceholder": "Search…",
+    "apply": "Filter",
+    "clear": "Reset",
+    "results": "{count, plural, =0 {No entries} one {# entry} other {# entries}}"
   },
   "about": {
     "metaTitle": "About",

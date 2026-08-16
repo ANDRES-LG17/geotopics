@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
-import Container from "@/components/Container";
-import EntryCard from "@/components/EntryCard";
+import EntryCarousel from "@/components/EntryCarousel";
 import Opening from "@/components/Opening";
-import Reveal from "@/components/Reveal";
 import { getEntriesByLocale } from "@/lib/content";
 import { createPageMetadata } from "@/lib/metadata";
 import type { Locale } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: Locale }> };
-
-/** Nombre d'entrées mises en avant sur l'accueil avant le lien « tout voir ». */
-const LATEST_COUNT = 4;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -30,42 +24,26 @@ export default async function HomePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations("home");
-  const entries = getEntriesByLocale(locale);
-  const latest = entries.slice(0, LATEST_COUNT);
-
   return (
     <>
       <Opening />
 
-      {latest.length > 0 && (
-        <Container className="py-20 sm:py-28">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-fg-subtle">
-            {t("latest")}
-          </h2>
+      {/* Les entrées, montrées plutôt qu'énumérées. Le carrousel a remplacé la
+          liste qui se trouvait dessous : les deux donnaient les mêmes entrées
+          l'une après l'autre, et se répétaient. Chaque diapositive porte son
+          propre lien — c'est par là qu'on entre dans le carnet, et l'accueil
+          n'a donc plus besoin d'un « tout voir » : la navigation principale
+          garde l'entrée vers le carnet complet.
 
-          <div className="mt-10 space-y-10">
-            {latest.map((entry, i) => (
-              // Cascade légère : chaque entrée arrive juste après la précédente.
-              <Reveal key={entry.slug} delay={i * 90}>
-                <EntryCard entry={entry} locale={locale} />
-              </Reveal>
-            ))}
-          </div>
-
-          {entries.length > LATEST_COUNT && (
-            <Reveal>
-              <Link
-                href="/blog"
-                className="mt-12 inline-flex items-center gap-1.5 font-semibold text-brand hover:underline"
-              >
-                {t("viewAll")}
-                <span aria-hidden="true">→</span>
-              </Link>
-            </Reveal>
-          )}
-        </Container>
-      )}
+          Hors `Container`, contrairement au reste de la page : la bande prend
+          toute la fenêtre pour laisser dépasser les diapositives voisines. La
+          largeur de lecture est rendue à l'intérieur, par la diapositive
+          elle-même. */}
+      <EntryCarousel
+        entries={getEntriesByLocale(locale)}
+        locale={locale}
+        className="py-12 sm:py-20"
+      />
     </>
   );
 }
