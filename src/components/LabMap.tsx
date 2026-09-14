@@ -233,14 +233,6 @@ export default function LabMap({
     const suivre = () => {
       const actif = document.fullscreenElement === wrapperRef.current;
       setPleinEcran(actif);
-      // Plein écran : plus d'article derrière, donc plus de défilement à
-      // protéger. La molette zoome sans Ctrl, et la contrainte revient en
-      // sortant.
-      const gestes = mapRef.current?.cooperativeGestures;
-      if (gestes) {
-        if (actif) gestes.disable();
-        else gestes.enable();
-      }
       // La carte doit recalculer sa taille : MapLibre ne le fait pas seul
       // quand son conteneur change de dimensions sans que la fenêtre bouge.
       requestAnimationFrame(() => mapRef.current?.resize());
@@ -313,14 +305,16 @@ export default function LabMap({
       ...cameraFor(lab.view, container.clientWidth < 640),
       minZoom: lab.minZoom,
       maxZoom: lab.maxZoom,
-      // Dans une entrée, la molette ne détourne pas le défilement : il faut
-      // Ctrl (ou deux doigts) pour zoomer. Une carte au milieu d'un texte qui
-      // capture le défilement est une carte qu'on déteste.
+      // La molette zoome directement, sans Ctrl.
       //
-      // En prévisualisation (`fill`) il n'y a pas d'article autour, donc rien
-      // à protéger : la molette zoome directement. Le plein écran lève la
-      // contrainte de la même façon, plus bas.
-      cooperativeGestures: !fill,
+      // La contrainte inverse — exiger Ctrl — protège le défilement d'un
+      // article quand une carte est posée au milieu du texte. Ici la carte
+      // occupe la page entière : il n'y a rien derrière elle à faire défiler,
+      // donc rien à protéger, et l'exigence ne faisait que gêner.
+      //
+      // Le jour où un lab revient s'insérer dans une colonne de lecture, la
+      // question se reposera — mais elle se posera pour ce lab-là, pas ici.
+      cooperativeGestures: false,
       attributionControl: {
         compact: true,
         // L'attribution d'un fond n'est pas une politesse : la plupart des
@@ -651,7 +645,10 @@ export default function LabMap({
         type="button"
         onClick={basculerPleinEcran}
         aria-pressed={pleinEcran}
-        className="absolute right-3 top-3 z-10 rounded-lg border border-line bg-surface/90 p-2 text-fg-muted shadow-sm backdrop-blur-sm transition-colors hover:text-fg"
+        // Sous la pile de zoom de MapLibre, pas à côté : ses deux boutons
+        // s'ancrent eux aussi en haut à droite, et se recouvraient. `top-24`
+        // laisse passer les deux (29 px chacun) plus leur marge.
+        className="absolute right-[10px] top-24 z-10 rounded-lg border border-line bg-surface/90 p-2 text-fg-muted shadow-sm backdrop-blur-sm transition-colors hover:text-fg"
         title={
           pleinEcran
             ? lang === "fr" ? "Quitter le plein écran" : "Exit full screen"
