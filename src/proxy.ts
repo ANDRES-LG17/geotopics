@@ -13,5 +13,9 @@ export default createMiddleware(routing);
 export const config = {
   // On ignore les routes d'API, les fichiers internes de Next.js
   // et tout ce qui contient un point (images, PDF, robots.txt...).
-  matcher: "/((?!api|_next|_vercel|.*\\..*).*)",
+  //
+  // `lab-preview` est également exclu : cette page de mise au point vit hors
+  // de `[locale]` et n'a pas de version traduite. Sans cette exclusion, le
+  // middleware la redirigerait vers `/fr/lab-preview/...`, qui n'existe pas.
+  matcher: "/((?!api|_next|_vercel|lab-preview|.*\\..*).*)",
 };

@@ -41,3 +41,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# atelier géomatique — les données de travail ne partent jamais en ligne.
+# Shapefiles, rasters, .qgz, .dwg : trop lourds pour git, et souvent sous une
+# licence qui n'autorise pas la redistribution. Ce qui se publie, c'est le
+# GeoJSON allégé dans `public/data/` et le script qui le produit.
+# Seules les NOTES sont versionnées : elles ne pèsent rien, et elles portent le
+# raisonnement (sources, licences, décisions) — ce qu'aucun script ne régénère.
+/geodata/**/*
+!/geodata/**/
+!/geodata/**/*.md

@@ -1,5 +1,6 @@
 import type { LabDefinition } from "./types";
 import demoIsochrones from "./demo-isochrones";
+import lacSaintCharles from "./lac-saint-charles";
 
 /**
  * Registre des labs — les cartes interactives que le carnet sait afficher.
@@ -20,6 +21,7 @@ import demoIsochrones from "./demo-isochrones";
  */
 export const LABS = {
   "demo-isochrones": demoIsochrones,
+  "lac-saint-charles": lacSaintCharles,
 } as const satisfies Record<string, LabDefinition>;
 
 export type LabId = keyof typeof LABS;
@@ -32,4 +34,13 @@ export function getLab(id: LabId): LabDefinition {
   return LABS[id];
 }
 
-export type { LabDefinition, LabLayer, LabColor, LabView, Bilingual } from "./types";
+export type {
+  LabDefinition,
+  LabLayer,
+  LabColor,
+  LabView,
+  LabCamera,
+  LabScene,
+  LabHeight,
+  Bilingual,
+} from "./types";

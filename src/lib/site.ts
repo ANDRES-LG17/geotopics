@@ -24,7 +24,7 @@ export const siteConfig = {
   social: {
     // TODO : remplacez par vos vraies URL (ou mettez `null` pour masquer le lien).
     linkedin: "https://www.linkedin.com/in/andres-lozada/",
-    github: "https://github.com/andreslozada" as string | null,
+    github: "https://github.com/ANDRES-LG17" as string | null,
     arcgis: null as string | null,
   },
 } as const;

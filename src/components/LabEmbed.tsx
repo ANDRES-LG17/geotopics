@@ -43,7 +43,12 @@ export default function LabEmbed({
   return (
     <figure className="m-0">
       {opened ? (
-        <LabMap lab={lab} label={title} errorLabel={t("labError")} />
+        <LabMap
+          lab={lab}
+          label={title}
+          errorLabel={t("labError")}
+          locale={locale}
+        />
       ) : (
         <div className="topo-pattern-on-dark flex h-[420px] flex-col items-center justify-center gap-4 rounded-xl border border-line bg-[#08150f] sm:h-[520px]">
           <button
