@@ -55,6 +55,30 @@ export default async function EntryPage({ params }: Props) {
   const t = await getTranslations("entry");
   const shareUrl = `${siteConfig.url}/${locale}/blog/${slug}`;
 
+  // Une entrée « labOnly » se réduit à sa carte : ni fil d'Ariane, ni titre,
+  // ni pied de page. L'URL sert à partager le lab seul, avant que l'article
+  // existe — tout habillage détournerait l'attention de ce qu'on vient voir.
+  //
+  // Le JSON-LD reste : c'est lui qui donne au lien son titre et sa
+  // description quand on le colle dans LinkedIn ou une messagerie.
+  if (entry.labOnly && entry.lab) {
+    return (
+      // `fixed inset-0` sort du flux : la page ne défile plus, la carte tient
+      // exactement dans la fenêtre. `z-50` la pose par-dessus l'en-tête et le
+      // pied de page du carnet, qui viennent du layout de `[locale]` et ne
+      // peuvent pas être retirés depuis une page.
+      <div className="fixed inset-0 z-50 bg-surface">
+        <ArticleJsonLd entry={entry} locale={locale} />
+        <LabEmbed
+          labId={entry.lab}
+          title={entry.title}
+          locale={locale}
+          plein
+        />
+      </div>
+    );
+  }
+
   return (
     <Container className="py-16 sm:py-20">
       <ArticleJsonLd entry={entry} locale={locale} />
@@ -107,17 +131,22 @@ export default async function EntryPage({ params }: Props) {
             colonne de lecture sur grand écran : 672 px suffisent à un texte,
             pas à une carte. */}
         {entry.lab && (
-          <div className="mt-10 lg:-mx-24">
+          <div className="mt-10 lg:-mx-40">
             <LabEmbed labId={entry.lab} title={entry.title} locale={locale} />
           </div>
         )}
 
         {/* Le HTML provient de nos propres fichiers markdown, versionnés dans
             le dépôt — il n'y a aucune entrée utilisateur ici. */}
-        <div
-          className="prose-article mt-10"
-          dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
-        />
+        {/* Le corps peut être vide : une entrée « lab » se publie parfois avec
+            sa carte seule, le texte venant ensuite. Rendre un bloc vide
+            laisserait une marge orpheline sous la carte. */}
+        {entry.contentHtml.trim() && (
+          <div
+            className="prose-article mt-10"
+            dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
+          />
+        )}
 
         <footer className="mt-12 border-t border-line pt-6">
           {entry.tools.length > 0 && (

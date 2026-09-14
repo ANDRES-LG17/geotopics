@@ -50,6 +50,7 @@ type FrontMatter = {
   lab?: string | null;
   cover?: string | null;
   draft?: boolean;
+  labOnly?: boolean;
 };
 
 /** Estimation de lecture : ~200 mots/minute, minimum 1 minute. */
@@ -95,6 +96,7 @@ function parseFile(filename: string): { meta: EntryMeta; body: string } | null {
       lab: isLabId(front.lab) ? front.lab : null,
       cover: front.cover ?? null,
       draft: front.draft === true,
+      labOnly: front.labOnly === true,
       readingMinutes: readingMinutes(content),
     },
     body: content,

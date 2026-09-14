@@ -22,6 +22,16 @@ export type EntryMeta = {
   locale: Locale;
   title: string;
   description: string;
+  /**
+   * L'entrée se réduit à sa carte : ni titre, ni description, ni en-tête, ni
+   * navigation. L'URL mène au lab et à rien d'autre.
+   *
+   * Sert à partager une carte seule, avant que l'article soit écrit. Le front
+   * matter reste complet — titre, description, outils — parce qu'il alimente
+   * la vignette du carnet et les métadonnées de partage : ce qui disparaît,
+   * c'est l'habillage de la page, pas l'identité de l'entrée.
+   */
+  labOnly: boolean;
   /** Format ISO : « 2026-02-14 ». */
   date: string;
   category: Category;

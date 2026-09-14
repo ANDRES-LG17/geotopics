@@ -34,8 +34,36 @@ const BLEU_EAU = "#2563eb";
 const BLEU_FONCE = "#1e40af";
 const ENCRE = "#14261f";
 
-/** Vert pour qui boit cette eau, rouge pour qui décide sans la boire. */
-const COULEUR_SELON_USAGE = ["case", ["get", "boit"], VERT_EAU, ORANGE];
+/**
+ * Une couleur par municipalité, et non deux camps.
+ *
+ * La version précédente peignait les quatre « décide sans boire » du même
+ * orange : Stoneham (79,3 %) et ses trois voisines se lisaient comme un seul
+ * bloc, alors que l'écart entre elles est le sujet — 79,3 % contre 2,9 %.
+ *
+ * Les cinq teintes passent les contrôles daltoniens en thème clair comme en
+ * sombre, et le magenta de Lac-Delage est celui qui s'écarte le plus de
+ * l'orange de Stoneham (ΔE 11,7) — c'est-à-dire de la confusion à corriger :
+ *
+ *   node scripts/validate_palette.js "#15803d,#c2410c,#7c3aed,#0891b2,#be185d"
+ *
+ * Le vert reste réservé à Québec : lui seul boit cette eau, et la couleur
+ * continue donc de porter ce sens.
+ */
+const VIOLET = "#7c3aed";
+const CYAN = "#0891b2";
+const MAGENTA = "#be185d";
+
+const COULEUR_PAR_MUNICIPALITE = [
+  "match",
+  ["get", "code"],
+  "23027", VERT_EAU,   // Québec — boit cette eau
+  "22035", ORANGE,     // Stoneham-et-Tewkesbury — 79,3 %
+  "22040", VIOLET,     // Lac-Beauport — 2,9 %
+  "22025", CYAN,       // Saint-Gabriel-de-Valcartier — 1,7 %
+  "22030", MAGENTA,    // Lac-Delage — 1,2 %
+  ORANGE,
+];
 
 /** Emprise mesurée sur les données exportées, élargie de 3 %. */
 const BASSIN: [number, number, number, number] = [
@@ -68,7 +96,7 @@ const lacSaintCharles: LabDefinition = {
       opacity: 0.1,
     },
 
-    // 1 — ÉTAPE 5 : les municipalités ENTIÈRES, en pointillé et sans
+    // 1 — Les municipalités ENTIÈRES, en pointillé et sans
     // remplissage.
     //
     // C'est ce que le découpage au bassin cachait. Stoneham contrôle 79 % du
@@ -90,14 +118,14 @@ const lacSaintCharles: LabDefinition = {
       dash: [4, 3],
     },
 
-    // 2 — ÉTAPE 3 : les cinq municipalités, en aplat. EN PREMIER, donc tout au
+    // 2 — Les cinq municipalités du bassin, en aplat. EN PREMIER, donc tout au
     // fond : c'est le territoire, pas le sujet.
     {
       kind: "fill",
       source: "bassin",
       filter: ["==", ["get", "couche"], "bassin_municipalite"],
-      color: COULEUR_SELON_USAGE,
-      opacity: 0.45,
+      color: COULEUR_PAR_MUNICIPALITE,
+      opacity: 0.5,
     },
 
     // 3 — Les limites entre elles : sans trait, deux voisines de même couleur
@@ -111,7 +139,7 @@ const lacSaintCharles: LabDefinition = {
       opacity: 0.9,
     },
 
-    // 4 — ÉTAPE 2 : le contour du bassin.
+    // 4 — Le contour du bassin.
     {
       kind: "line",
       source: "bassin",
@@ -121,7 +149,11 @@ const lacSaintCharles: LabDefinition = {
       opacity: 0.95,
     },
 
-    // 5 — ÉTAPE 1 : les lacs, au-dessus de l'aplat municipal.
+    // 5 — Les 18 lacs du décompte, au-dessus de l'aplat municipal.
+    //
+    // Le fond peint sa propre eau en bleu pâle (#9ebdff). Nos lacs sont d'un
+    // bleu franc : ce ne sont pas « de l'eau » en général, ce sont les dix-huit
+    // que l'entrée dénombre.
     {
       kind: "fill",
       source: "bassin",
@@ -130,7 +162,18 @@ const lacSaintCharles: LabDefinition = {
       opacity: 1,
     },
 
-    // 6 — ÉTAPE 4 : le nom du lac principal. Une seule étiquette posée à
+    // 6 — Leur cerne : ce qui les distingue de l'eau du fond au premier coup
+    // d'œil, et rend repérables les plus petits (moins de 5 px de large).
+    {
+      kind: "line",
+      source: "bassin",
+      filter: ["==", ["get", "couche"], "lac"],
+      color: BLEU_FONCE,
+      width: 1.6,
+      opacity: 1,
+    },
+
+    // 7 — Le nom du lac principal. Une seule étiquette posée à
     // demeure — le reste se lit au survol, ce qui garde la carte respirable.
     {
       kind: "label",
@@ -171,23 +214,47 @@ const lacSaintCharles: LabDefinition = {
    */
   basemap: {
     kind: "style",
-    url: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-    // Positron dessine ses propres lacs : deux figurés pour la même eau, à deux
-    // échelles et deux dates. Les lacs de cette carte sont ceux du décompte.
-    hideLayers: ["water", "water_shadow", "waterway", "waterway_label",
-                 "watername_lake", "watername_lake_line"],
-    // Le fond situe, il ne raconte pas.
-    fade: 0.5,
+    // Liberty plutôt que Positron : ce dernier est un gris presque blanc,
+    // pensé pour disparaître sous une couche thématique. Ici la carte doit
+    // aussi se lire comme un territoire — relief boisé, routes, villages — et
+    // Positron n'en donnait rien. Liberty peint l'eau en bleu (#9ebdff), les
+    // bois en vert, et les routes en jaune : un fond qui ressemble à ce qu'on
+    // attend d'une carte.
+    url: "https://tiles.openfreemap.org/styles/liberty",
+
+    // L'eau du fond RESTE visible, contrairement à la version précédente.
+    //
+    // On la masquait pour éviter un doublon avec nos 18 lacs. Mais le fond
+    // couvre bien plus large que le bassin : le fleuve, le lac Saint-Joseph,
+    // toute l'eau alentour. La masquer laissait un paysage sans eau autour
+    // d'une carte dont l'eau est le sujet. Nos lacs se posent par-dessus, en
+    // bleu plus soutenu et cerclés : ils restent distincts.
+    //
+    // Seules partent les étiquettes d'eau du fond, qui se disputaient la place
+    // avec le nom du lac Saint-Charles.
+    hideLayers: ["water_name_point_label", "water_name_line_label",
+                 "waterway_line_label"],
+
+    // 0,82 au lieu de 0,5 : le fond doit se voir. Atténué à moitié, il
+    // devenait un gris lavé où plus rien ne se distinguait — ni l'eau, ni les
+    // bois, ni les routes. Il recule encore un peu, sans disparaître.
+    fade: 0.82,
     attribution: {
-      fr: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, © <a href="https://carto.com/attributions">CARTO</a>',
-      en: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, © <a href="https://carto.com/attributions">CARTO</a>',
+      fr: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://openmaptiles.org/">OpenMapTiles</a>',
+      en: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://openmaptiles.org/">OpenMapTiles</a>',
     },
   },
 
+  // La légende nomme les cinq municipalités du bassin avec leur part : une
+  // entrée « décide sans boire » pour quatre teintes différentes obligeait le
+  // lecteur à deviner laquelle est laquelle.
   legend: [
-    { color: VERT_EAU, label: { fr: "Boit cette eau", en: "Drinks this water" } },
-    { color: ORANGE, label: { fr: "Décide sans boire", en: "Decides without drinking" } },
-    { color: BLEU_EAU, label: { fr: "Lacs · territoire desservi", en: "Lakes · served territory" } },
+    { color: VERT_EAU, label: { fr: "Québec — 14,9 % · boit cette eau", en: "Québec — 14.9% · drinks this water" } },
+    { color: ORANGE, label: { fr: "Stoneham-et-Tewkesbury — 79,3 %", en: "Stoneham-et-Tewkesbury — 79.3%" } },
+    { color: VIOLET, label: { fr: "Lac-Beauport — 2,9 %", en: "Lac-Beauport — 2.9%" } },
+    { color: CYAN, label: { fr: "Saint-Gabriel-de-Valcartier — 1,7 %", en: "Saint-Gabriel-de-Valcartier — 1.7%" } },
+    { color: MAGENTA, label: { fr: "Lac-Delage — 1,2 %", en: "Lac-Delage — 1.2%" } },
+    { color: BLEU_EAU, label: { fr: "Les 18 lacs du bassin", en: "The watershed's 18 lakes" } },
   ],
 
   attribution: {
@@ -199,6 +266,9 @@ const lacSaintCharles: LabDefinition = {
     // L'ordre compte : la première couche qui répond gagne. Les parts du
     // bassin d'abord (le propos principal), les lacs ensuite, le territoire
     // municipal complet en dernier — c'est le fond de la lecture.
+    //
+    // Indices des couches ci-dessus : 2 = parts du bassin, 5 = lacs,
+    // 0 = municipalités entières.
     layers: [2, 5, 0],
     rows: [
       { field: "nom", title: true },

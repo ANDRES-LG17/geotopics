@@ -15,9 +15,8 @@ import {
  * Le moteur cartographique — le seul fichier du site qui importe MapLibre.
  *
  * Il n'est jamais importé directement : `LabEmbed` le charge par import
- * dynamique après un clic du lecteur. C'est ce qui garde les 250 ko de
- * MapLibre (plus son CSS) hors du bundle de tous ceux qui viennent seulement
- * lire un article.
+ * dynamique. C'est ce qui garde les 250 ko de MapLibre (plus son CSS) hors du
+ * bundle des pages qui ne portent pas de carte.
  *
  * Aucune requête réseau n'est faite en dehors des fichiers du site, tant qu'un
  * lab ne déclare pas de fond de carte : pas de jeton, pas de fournisseur de
@@ -199,17 +198,19 @@ export default function LabMap({
   /** Langue courante, pour les libellés de scènes. */
   locale?: string;
   /**
-   * La carte occupe toute la hauteur disponible au lieu des 420/520 px d'une
-   * entrée. Utilisé par la page de prévisualisation.
+   * La carte occupe toute la hauteur de son conteneur, qui décide donc de sa
+   * taille. C'est le cas dans une entrée comme en prévisualisation : la
+   * hauteur est déclarée à un seul endroit, jamais deux.
    */
   fill?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Le conteneur qui passe en plein écran : la carte ET ses boutons, pour que
+  // les scènes et la légende restent accessibles une fois agrandi.
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const sceneRef = useRef<((i: number, animate: boolean) => void) | null>(null);
   const [failed, setFailed] = useState(false);
-  // Compte rendu de diagnostic, affiché sous la carte en développement.
-  const [rapport, setRapport] = useState<string | null>(null);
   // Entité survolée : position dans la carte, et ses propriétés.
   const [survol, setSurvol] = useState<{
     x: number;
@@ -217,8 +218,48 @@ export default function LabMap({
     props: Record<string, unknown>;
   } | null>(null);
   const [scene, setScene] = useState(0);
+  const [pleinEcran, setPleinEcran] = useState(false);
   const scenes = lab.scenes ?? [];
   const lang: "fr" | "en" = locale === "en" ? "en" : "fr";
+
+  /**
+   * Plein écran natif du navigateur.
+   *
+   * L'API n'est pas un état qu'on impose : l'utilisateur peut en sortir par
+   * Échap sans passer par notre bouton. On écoute donc l'événement plutôt que
+   * de tenir un booléen de notre côté — sinon le bouton ment.
+   */
+  useEffect(() => {
+    const suivre = () => {
+      const actif = document.fullscreenElement === wrapperRef.current;
+      setPleinEcran(actif);
+      // Plein écran : plus d'article derrière, donc plus de défilement à
+      // protéger. La molette zoome sans Ctrl, et la contrainte revient en
+      // sortant.
+      const gestes = mapRef.current?.cooperativeGestures;
+      if (gestes) {
+        if (actif) gestes.disable();
+        else gestes.enable();
+      }
+      // La carte doit recalculer sa taille : MapLibre ne le fait pas seul
+      // quand son conteneur change de dimensions sans que la fenêtre bouge.
+      requestAnimationFrame(() => mapRef.current?.resize());
+    };
+    document.addEventListener("fullscreenchange", suivre);
+    return () => document.removeEventListener("fullscreenchange", suivre);
+  }, []);
+
+  const basculerPleinEcran = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      wrapperRef.current?.requestFullscreen().catch(() => {
+        // Certains navigateurs refusent hors interaction directe, ou en
+        // iframe sans `allowfullscreen`. Ce n'est pas une panne : la carte
+        // reste utilisable à sa taille normale.
+      });
+    }
+  };
 
   // Le lecteur change de scène : on rejoue le cadrage. L'animation est coupée
   // si le système demande moins de mouvement.
@@ -272,10 +313,14 @@ export default function LabMap({
       ...cameraFor(lab.view, container.clientWidth < 640),
       minZoom: lab.minZoom,
       maxZoom: lab.maxZoom,
-      // La molette ne détourne pas le défilement de l'article : il faut
-      // Ctrl (ou deux doigts) pour zoomer. Une carte au milieu d'un texte
-      // qui capture le défilement est une carte qu'on déteste.
-      cooperativeGestures: true,
+      // Dans une entrée, la molette ne détourne pas le défilement : il faut
+      // Ctrl (ou deux doigts) pour zoomer. Une carte au milieu d'un texte qui
+      // capture le défilement est une carte qu'on déteste.
+      //
+      // En prévisualisation (`fill`) il n'y a pas d'article autour, donc rien
+      // à protéger : la molette zoome directement. Le plein écran lève la
+      // contrainte de la même façon, plus bas.
+      cooperativeGestures: !fill,
       attributionControl: {
         compact: true,
         // L'attribution d'un fond n'est pas une politesse : la plupart des
@@ -335,6 +380,10 @@ export default function LabMap({
             symbol: ["icon-opacity", "text-opacity"],
             raster: ["raster-opacity"],
             circle: ["circle-opacity"],
+            // Les bâtiments 3D d'un fond : sans cette entrée ils restaient
+            // pleinement opaques pendant que tout le reste reculait, et
+            // ressortaient donc PLUS que la carte thématique posée dessus.
+            "fill-extrusion": ["fill-extrusion-opacity"],
           };
           for (const couche of map.getStyle().layers ?? []) {
             for (const prop of proprietes[couche.type] ?? []) {
@@ -548,8 +597,9 @@ export default function LabMap({
         `couches ${lignes.join(" ")} · source ${source ? "ok" : "ABSENTE"} · ` +
         `centre ${map.getCenter().toArray().map((v) => v.toFixed(3)).join(",")} · ` +
         `zoom ${map.getZoom().toFixed(2)}`;
+      // En console seulement : sous la carte, ce relevé prenait la place de
+      // ce qu'on vient regarder.
       console.info("[lab]", lab.id, resume);
-      setRapport(resume);
     });
 
     const theme = window.matchMedia("(prefers-color-scheme: dark)");
@@ -565,20 +615,71 @@ export default function LabMap({
       mapRef.current = null;
       map.remove();
     };
-  }, [lab, lang]);
+  }, [lab, lang, fill]);
 
   const current = scenes[scene];
 
   return (
-    <div className={fill ? "relative flex h-full flex-col" : "relative"}>
+    <div
+      ref={wrapperRef}
+      // En plein écran, le conteneur devient la page : il prend toute la
+      // hauteur et reçoit un fond, sinon le navigateur peint du noir autour
+      // des boutons et de la légende.
+      className={
+        pleinEcran
+          ? "flex h-full flex-col bg-surface p-4"
+          : fill
+            ? "relative flex h-full flex-col"
+            : "relative"
+      }
+    >
       <div
         ref={containerRef}
         role="region"
         aria-label={label}
         className={`w-full overflow-hidden rounded-xl border border-line ${
-          fill ? "min-h-0 flex-1" : "h-[420px] sm:h-[520px]"
+          pleinEcran || fill ? "min-h-0 flex-1" : "h-[420px] sm:h-[520px]"
         }`}
       />
+
+      {/*
+        Plein écran. Placé dans le flux plutôt qu'en surimpression sur la
+        carte : un bouton posé sur la carte masque une partie des données, et
+        se retrouve sous le curseur au moment où l'on explore.
+      */}
+      <button
+        type="button"
+        onClick={basculerPleinEcran}
+        aria-pressed={pleinEcran}
+        className="absolute right-3 top-3 z-10 rounded-lg border border-line bg-surface/90 p-2 text-fg-muted shadow-sm backdrop-blur-sm transition-colors hover:text-fg"
+        title={
+          pleinEcran
+            ? lang === "fr" ? "Quitter le plein écran" : "Exit full screen"
+            : lang === "fr" ? "Plein écran" : "Full screen"
+        }
+      >
+        <span className="sr-only">
+          {pleinEcran
+            ? lang === "fr" ? "Quitter le plein écran" : "Exit full screen"
+            : lang === "fr" ? "Plein écran" : "Full screen"}
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          {pleinEcran ? (
+            <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" />
+          ) : (
+            <path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6" />
+          )}
+        </svg>
+      </button>
 
       {/*
         Des boutons, pas un défilement détourné : le défilement narratif se
@@ -727,10 +828,24 @@ export default function LabMap({
         </div>
       )}
 
-      {rapport && process.env.NODE_ENV !== "production" && (
-        <p className="mt-2 font-mono text-[11px] leading-snug text-fg-subtle">
-          {rapport}
-        </p>
+      {/*
+        En plein écran, la légende est reprise ici : celle de l'entrée vit
+        dans `LabEmbed`, hors du conteneur agrandi, et disparaîtrait donc au
+        moment précis où la carte occupe tout l'écran.
+      */}
+      {pleinEcran && lab.legend && (
+        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+          {lab.legend.map((item) => (
+            <li key={item.label.en} className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="h-3 w-3 shrink-0 rounded-sm border border-line"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="text-fg-muted">{item.label[lang]}</span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {failed && (
