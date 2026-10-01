@@ -372,9 +372,65 @@ const tramwayQuebec: LabDefinition = {
     en: "Route: OpenStreetMap contributors (ODbL) — retrieved 1 October 2026",
   },
 
+  /**
+   * Le clic sur une station, et ce qu'il ouvre.
+   *
+   * L'aire de marche n'est PAS montrée d'emblée : vingt-neuf taches
+   * superposées ne se lisent pas. Elle apparaît pour la station choisie, et
+   * pour elle seule.
+   *
+   * Le curseur ouvre à 15 minutes — l'aire complète est là dès le clic, et le
+   * réduire devient une exploration plutôt qu'un péage. Les six paliers sont
+   * précalculés par `scripts/analysis/tramway-isochrones.py` : le curseur
+   * choisit parmi des formes écrites, il ne calcule rien dans le navigateur.
+   */
+  select: {
+    // Indice 6 : la couche des stations.
+    layers: [6],
+    key: "station",
+    title: "nom",
+    // Indices 0 et 1 : l'aplat de l'aire de marche et son contour.
+    revealLayers: [0, 1],
+    slider: {
+      field: "minutes",
+      steps: [3, 5, 7, 10, 12, 15],
+      start: 15,
+      label: { fr: "Durée de marche", en: "Walking time" },
+      suffix: " min",
+    },
+    rows: [
+      {
+        // En tête : c'est le chiffre que le lab existe pour donner.
+        field: "population",
+        label: { fr: "Habitants à portée", en: "Residents within reach" },
+      },
+      {
+        field: "superficie_ha",
+        label: { fr: "Surface atteinte", en: "Area reached" },
+        suffix: " ha",
+      },
+      {
+        field: "disque_ha",
+        label: { fr: "Si c'était un cercle", en: "If it were a circle" },
+        suffix: " ha",
+      },
+      {
+        field: "part_disque_pct",
+        label: { fr: "Part réellement atteinte", en: "Share actually reached" },
+        suffix: " %",
+      },
+      {
+        field: "rue_km",
+        label: { fr: "Rue parcourue", en: "Street covered" },
+        suffix: " km",
+      },
+    ],
+  },
+
   hover: {
-    // Indices : 1 = tracé en surface, 2 = tunnel, 3 = tronçons isolés.
-    layers: [1, 2, 3],
+    // Indices : 3 = tracé en surface, 4 = tunnel, 5 = tronçons isolés.
+    // L'ordre compte : la première couche qui répond gagne.
+    layers: [3, 4, 5],
     rows: [
       {
         field: "nom",

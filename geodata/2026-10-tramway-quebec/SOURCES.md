@@ -196,6 +196,69 @@ Deux stations saisies pour l'essai :
 
 ---
 
+## Population — recensement 2021, Statistique Canada
+
+| | |
+| --- | --- |
+| **Fournisseur** | Statistique Canada |
+| **Téléchargé le** | 2026-10-01 |
+| **Millésime** | recensement de 2021 |
+| **Licence** | Licence ouverte de Statistique Canada |
+| **Attribution exigée** | « Source : Statistique Canada, Recensement de la population de 2021 » |
+| **Fichiers** | `00-brut/statcan/aires-diffusion.geojson` · `00-brut/statcan/population-ad.json` |
+| **SCR d'origine** | EPSG:3347 (Lambert), reprojeté en EPSG:4326 |
+
+Deux jeux, parce que **Statistique Canada sépare la géométrie des chiffres** :
+
+1. **Limites des aires de diffusion** — `lad_000b21a_f.zip`, 197 Mo compressés,
+   414 Mo de shapefile. Découpé à l'emprise du corridor avec `ogr2ogr` :
+   **433 aires**, 1,2 Mo.
+2. **Profil du recensement, Québec** — 435 Mo compressés, **6,5 Go** de CSV.
+
+### Comment extraire 433 lignes d'un fichier de 6,5 Go
+
+Le CSV ne tient pas en mémoire et ne s'extrait pas entièrement sur disque. Deux
+choses le rendent praticable :
+
+- l'archive contient un **fichier d'index** (625 ko) qui donne la ligne de début
+  de chaque géographie — les 433 aires se situent entre les lignes 3 183 512 et
+  6 345 974 ;
+- `unzip -p` écrit le CSV sur la sortie standard, qu'on lit **en flux** : le
+  fichier n'est jamais écrit sur disque ni chargé en mémoire.
+
+Résultat : **6,3 millions de lignes lues en 8 secondes**, 433 aires sur 433,
+**253 911 habitants** dans le corridor.
+
+Le format d'une ligne, vérifié sur le fichier — l'identifiant de caractéristique
+n'est pas entre guillemets, ce qui a fait échouer un premier filtre :
+
+```
+2021,"2021S051224231035","24231035","Aire de diffusion","24231035",
+0.0,0.0,"00999",1,"Population, 2021",1,241,"",…
+```
+
+**Champs utilisés** :
+
+- `IDUGD` — identifiant de l'aire, préfixé `2021S0512` ;
+- `ID_CARACTERISTIQUE` = `1` — la ligne « Population, 2021 » ;
+- `C1_CHIFFRE_TOTAL` — les habitants.
+
+**Limites connues** :
+
+1. **La population est estimée, pas comptée.** Une aire de diffusion tombe
+   rarement entière dans une isochrone : on compte la part de ses habitants
+   proportionnelle à la part de sa surface recouverte. Cela suppose la
+   population **uniformément répartie** dans l'aire, ce qui est faux dans le
+   détail — un secteur qui mêle un parc et une tour concentre ses habitants d'un
+   côté. À l'échelle d'une aire de diffusion l'écart reste acceptable, et c'est
+   la convention des études de desserte. **À dire dans la note du lab.**
+2. **Millésime 2021**, soit deux ans avant l'EOD et douze ans avant la mise en
+   service. La population aura changé.
+3. Les aires sans population déclarée — parc, zone industrielle — sont gardées à
+   zéro : elles comptent dans la surface, pas dans les habitants.
+
+---
+
 ## À télécharger — fiches à remplir au moment de le faire
 
 - [ ] **Population par aire de diffusion** — recensement 2021, Statistique

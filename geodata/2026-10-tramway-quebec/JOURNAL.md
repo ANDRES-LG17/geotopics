@@ -279,6 +279,70 @@ peut-être que des axes de chaussée, ce qui gonflerait les isochrones de
 banlieue. Le biais irait alors à l'inverse de ce que le lab veut montrer :
 **contrôle secteur par secteur obligatoire.**
 
+### Six paliers, et ce qu'ils révèlent
+
+**Fait** — le script calcule maintenant six aires par station (3, 5, 7, 10, 12,
+15 min), pour alimenter un curseur de durée dans le lab.
+
+**Comment, sans sextupler le coût** — le graphe n'est parcouru qu'**une fois**,
+jusqu'au plus grand palier. Les distances obtenues servent ensuite à découper
+les six formes. Ajouter un palier ne coûte que son polygone.
+
+**Le constat que les paliers font apparaître**, et qui n'était pas prévu :
+
+| | 3 min | 5 min | 7 min | 10 min | 12 min | 15 min |
+| --- | --- | --- | --- | --- | --- | --- |
+| Jean-Paul-L'Allier | 85 % | 80 % | 75 % | 71 % | 70 % | **69 %** |
+| Saint-Roch | **91 %** | 79 % | 74 % | 70 % | 68 % | **68 %** |
+
+*(part de ce qu'un cercle du même rayon aurait promis)*
+
+**La part tombe à mesure qu'on s'éloigne.** À trois minutes, presque tout est
+atteignable — on est dans la trame, rien ne barre. À quinze, un tiers a disparu.
+
+**Ce que ça dit** : les coupures ne sont pas près de la station, elles
+apparaissent quand le rayon s'allonge. La falaise, la rivière et l'autoroute
+sont des obstacles de *deuxième couronne*. C'est exactement ce qu'un curseur
+donne à voir en mouvement, et ce qu'une forme figée à 15 minutes tait.
+
+**Poids** — 12 polygones pour 2 stations : 45,7 ko. Projection pour les 29 :
+**663 ko**. Au-delà des 500 ko idéaux, mais dans la fourchette « acceptable si
+la carte est le sujet » de `public/data/README.md` — et elle l'est.
+
+### Le clic, le panneau, le curseur
+
+**Fait** — ajouté `select` au vocabulaire des labs : `key`, `title`, `rows`,
+`revealLayers`, `slider`. Et dans `LabMap` : un gestionnaire de clic, un état de
+sélection, un panneau et un curseur.
+
+**Pourquoi une sélection et pas un survol** — le survol s'efface dès que le
+curseur bouge. Il montre, il ne permet pas d'agir. Dès que le lecteur doit faire
+varier une durée et lire plusieurs chiffres, il faut que son choix persiste. Et
+le survol **n'existe pas au doigt** : le lab était jusqu'ici inutilisable sur
+téléphone, ce que le clic corrige au passage.
+
+**Pourquoi les aires naissent éteintes** — vingt-neuf taches superposées ne se
+lisent pas. Elles n'apparaissent que pour la station choisie, filtrées par
+`revealLayers` sur la clé de station **et** sur le palier courant.
+
+**Pourquoi le curseur ouvre à 15 et non à 0** — l'aire complète est là dès le
+clic ; la réduire devient une exploration. Ouvrir à 0 aurait fait d'un geste que
+rien n'annonce le péage pour voir quoi que ce soit.
+
+**Décision d'interface** — le panneau est en surimpression sur la carte, pas à
+côté : la carte garde toute sa largeur tant que rien n'est choisi. En bas sur
+téléphone, là où le pouce atteint ; à gauche au-delà de 640 px, du côté opposé
+aux commandes de zoom.
+
+Le curseur est un `input range` natif. Il se pilote au clavier, annonce sa
+valeur aux lecteurs d'écran, et se saisit au doigt — trois choses qu'un curseur
+dessiné à la main aurait fallu réécrire.
+
+**À vérifier** — les chiffres du panneau sont relus par `querySourceFeatures`
+après chaque changement de palier. Si une tuile n'est pas chargée, la lecture ne
+trouve rien : on garde alors les chiffres précédents plutôt que de vider le
+panneau, qui clignoterait à chaque mouvement.
+
 ---
 
 ## Décisions structurantes

@@ -235,8 +235,41 @@ export default function LabMap({
   } | null>(null);
   const [scene, setScene] = useState(0);
   const [pleinEcran, setPleinEcran] = useState(false);
+  /**
+   * Entité choisie d'un clic, et palier du curseur.
+   *
+   * Distincte du survol : celui-ci s'efface dès que le curseur bouge, alors
+   * qu'une sélection reste tant qu'on ne la ferme pas — c'est ce qu'il faut
+   * pour qu'un panneau soit lisible et qu'un curseur serve à quelque chose.
+   */
+  const [choisi, setChoisi] = useState<Record<string, unknown> | null>(null);
+  const [palier, setPalier] = useState<number | null>(null);
   const scenes = lab.scenes ?? [];
   const lang: "fr" | "en" = locale === "en" ? "en" : "fr";
+
+  const curseur = lab.select?.slider;
+  // Le palier courant : celui qu'a posé le lecteur, sinon celui d'ouverture,
+  // sinon le dernier — montrer l'aire complète d'emblée vaut mieux que de
+  // l'exiger d'un geste que rien n'annonce.
+  const palierCourant =
+    palier ?? curseur?.start ?? curseur?.steps[curseur.steps.length - 1] ?? null;
+
+  /**
+   * Les chiffres affichés au palier courant.
+   *
+   * C'est ce qui fait la différence entre un curseur décoratif et un curseur
+   * qui mesure : en bougeant, le lecteur ne voit pas seulement la tache
+   * changer, il voit la superficie et la population changer avec elle.
+   *
+   * Les valeurs viennent de l'entité révélée — celle qui porte le palier — et
+   * non de l'entité cliquée, qui n'en a qu'un jeu. Lue sur la carte plutôt que
+   * tenue dans un état : les données sont déjà là, et les dupliquer
+   * garantirait qu'elles divergent.
+   */
+  const [donneesPanneau, setDonneesPanneau] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
 
   /**
    * Plein écran natif du navigateur.
@@ -275,6 +308,73 @@ export default function LabMap({
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     sceneRef.current?.(scene, !reduced);
   }, [scene]);
+
+  /**
+   * Les couches révélées ne montrent que ce qui est choisi, au palier courant.
+   *
+   * Sans ce filtre, les vingt-neuf aires de marche se superposeraient : une
+   * tache uniforme où plus rien ne se lit. Le filtre les éteint toutes tant
+   * qu'aucune station n'est choisie, puis n'en laisse qu'une.
+   *
+   * `["==", ["literal", false], true]` est un faux constant : c'est ainsi qu'on
+   * éteint une couche par filtre, sans toucher à sa visibilité — qu'une scène
+   * pourrait vouloir piloter par ailleurs.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    const select = lab.select;
+    if (!map || !select?.revealLayers?.length) return;
+
+    const appliquer = () => {
+      for (const index of select.revealLayers ?? []) {
+        const id = `lab-layer-${index}`;
+        if (!map.getLayer(id)) continue;
+
+        if (!choisi) {
+          map.setFilter(id, ["==", ["literal", false], true]);
+          continue;
+        }
+
+        const conditions: unknown[] = [
+          "all",
+          ["==", ["get", select.key], choisi[select.key] as string],
+        ];
+        if (select.slider && palierCourant !== null) {
+          conditions.push(["==", ["get", select.slider.field], palierCourant]);
+        }
+        map.setFilter(id, conditions as never);
+      }
+
+      // Relire les chiffres du palier courant parmi les entités dessinées.
+      //
+      // `querySourceFeatures` interroge les tuiles chargées, pas l'écran : une
+      // aire reste trouvable même si le lecteur a fait glisser la carte à côté.
+      // Elle ne trouve rien, en revanche, pour un palier dont aucune tuile
+      // n'est chargée — on garde alors les chiffres précédents plutôt que
+      // d'effacer le panneau, ce qui clignoterait à chaque mouvement.
+      if (!choisi) {
+        setDonneesPanneau(null);
+        return;
+      }
+      for (const index of select.revealLayers ?? []) {
+        const id = `lab-layer-${index}`;
+        const couche = map.getLayer(id);
+        if (!couche) continue;
+        const trouve = map.querySourceFeatures(couche.source as string, {
+          filter: map.getFilter(id) as never,
+        });
+        if (trouve.length) {
+          setDonneesPanneau(trouve[0].properties ?? null);
+          return;
+        }
+      }
+    };
+
+    // Les couches n'existent qu'une fois le style chargé : au premier rendu,
+    // l'effet passe avant `load`.
+    if (map.isStyleLoaded()) appliquer();
+    else map.once("idle", appliquer);
+  }, [choisi, palierCourant, lab.select, lab.sources]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -369,6 +469,50 @@ export default function LabMap({
       map.on("mouseout", () => {
         map.getCanvas().style.cursor = "";
         setSurvol(null);
+      });
+    }
+
+    // Sélection au clic. Fonctionne aussi au doigt : MapLibre émet `click` sur
+    // un appui, là où `mousemove` n'existe pas — c'est donc le même geste qui
+    // rend le lab utilisable sur téléphone.
+    if (lab.select) {
+      const cliquables = lab.select.layers.map((i) => `lab-layer-${i}`);
+
+      /**
+       * Tolérance de visée, en pixels.
+       *
+       * `queryRenderedFeatures` sur un point n'interroge que ce pixel-là. Une
+       * station fait sept pixels de rayon : viser juste devient un exercice
+       * d'adresse, impossible au doigt, où la pulpe couvre une quarantaine de
+       * pixels sans qu'on sache lesquels.
+       *
+       * On interroge donc un carré autour du point. 12 px est le compromis
+       * usuel : assez pour pardonner le geste, assez peu pour ne pas attraper
+       * la station d'à côté.
+       */
+      const TOLERANCE = 12;
+
+      const chercher = (point: { x: number; y: number }) =>
+        map.queryRenderedFeatures(
+          [
+            [point.x - TOLERANCE, point.y - TOLERANCE],
+            [point.x + TOLERANCE, point.y + TOLERANCE],
+          ],
+          { layers: cliquables.filter((id) => map.getLayer(id)) },
+        );
+
+      map.on("click", (e) => {
+        const trouve = chercher(e.point);
+        // Un clic à côté referme le panneau : c'est le geste attendu, et il
+        // évite d'avoir à viser une croix.
+        setChoisi(trouve.length ? (trouve[0].properties ?? {}) : null);
+      });
+
+      // Le curseur annonce ce qui est cliquable. Sans ce signal, rien dans la
+      // page ne dit que ces cercles répondent — et le lecteur passe à côté de
+      // tout le propos du lab.
+      map.on("mousemove", (e) => {
+        if (chercher(e.point).length) map.getCanvas().style.cursor = "pointer";
       });
     }
 
@@ -602,6 +746,16 @@ export default function LabMap({
         }
       });
 
+      // Les couches révélées naissent éteintes : rien n'est encore choisi, et
+      // vingt-neuf aires superposées ne seraient qu'une tache. L'effet de
+      // sélection les rallumera au premier clic.
+      for (const index of lab.select?.revealLayers ?? []) {
+        const id = `lab-layer-${index}`;
+        if (map.getLayer(id)) {
+          map.setFilter(id, ["==", ["literal", false], true]);
+        }
+      }
+
       // La première scène est appliquée dès le chargement — sinon les couches
       // qu'elle masque apparaissent une fraction de seconde.
       applyScene(0, false);
@@ -747,6 +901,120 @@ export default function LabMap({
           pleinEcran || fill ? "min-h-0 flex-1" : "h-[420px] sm:h-[520px]"
         }`}
       />
+
+      {/*
+        Panneau de la station choisie.
+
+        En surimpression sur la carte plutôt qu'à côté : la carte garde toute sa
+        largeur quand rien n'est choisi, et le panneau n'existe que lorsqu'il a
+        quelque chose à dire. Sur téléphone il se pose en bas, où le pouce
+        l'atteint ; au-delà de 640 px il passe à gauche, du côté opposé aux
+        commandes de zoom.
+      */}
+      {lab.select && choisi && (
+        <div
+          className="absolute inset-x-2 bottom-2 z-20 max-h-[55%] overflow-y-auto rounded-xl border border-line bg-surface/95 p-4 shadow-lg backdrop-blur-sm sm:inset-x-auto sm:bottom-auto sm:left-3 sm:top-3 sm:max-h-[calc(100%-1.5rem)] sm:w-72"
+          role="complementary"
+          aria-label={
+            lang === "fr" ? "Station sélectionnée" : "Selected station"
+          }
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-base font-semibold leading-tight text-fg">
+              {String(choisi[lab.select.title] ?? "")}
+            </p>
+            <button
+              type="button"
+              onClick={() => setChoisi(null)}
+              className="-mr-1 -mt-1 shrink-0 rounded-lg p-1 text-fg-muted transition-colors hover:text-fg"
+              title={lang === "fr" ? "Fermer" : "Close"}
+            >
+              <span className="sr-only">
+                {lang === "fr" ? "Fermer" : "Close"}
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/*
+            Le curseur de durée. Un `input range` natif plutôt qu'un dessin
+            maison : il se pilote au clavier, annonce sa valeur aux lecteurs
+            d'écran, et se saisit au doigt sans qu'on ait à y penser.
+
+            Les paliers sont discrets — le curseur passe de l'un à l'autre, car
+            les formes intermédiaires n'existent pas. C'est assumé : six paliers
+            suffisent à ce que le mouvement paraisse continu.
+          */}
+          {curseur && palierCourant !== null && (
+            <div className="mt-4">
+              <div className="flex items-baseline justify-between">
+                <label
+                  htmlFor="lab-curseur"
+                  className="text-xs uppercase tracking-wide text-fg-muted"
+                >
+                  {curseur.label[lang]}
+                </label>
+                <span className="text-sm font-semibold tabular-nums text-fg">
+                  {palierCourant}
+                  {curseur.suffix ?? ""}
+                </span>
+              </div>
+              <input
+                id="lab-curseur"
+                type="range"
+                min={0}
+                max={curseur.steps.length - 1}
+                step={1}
+                value={Math.max(0, curseur.steps.indexOf(palierCourant))}
+                onChange={(e) =>
+                  setPalier(curseur.steps[Number(e.target.value)])
+                }
+                className="mt-2 w-full accent-[var(--accent,#c2410c)]"
+                aria-valuetext={`${palierCourant}${curseur.suffix ?? ""}`}
+              />
+              <div className="flex justify-between text-[11px] tabular-nums text-fg-muted">
+                <span>{curseur.steps[0]}</span>
+                <span>{curseur.steps[curseur.steps.length - 1]}</span>
+              </div>
+            </div>
+          )}
+
+          {/*
+            Les lignes du panneau. Elles lisent les propriétés de l'entité
+            révélée au palier courant quand il y en a une — sinon celles de
+            l'entité cliquée.
+          */}
+          <dl className="mt-4 space-y-2">
+            {lab.select.rows.map((row, i) => {
+              const valeur = (donneesPanneau ?? choisi)[row.field];
+              if (valeur === undefined || valeur === null || valeur === "") {
+                return null;
+              }
+              return (
+                <div key={i} className="flex items-baseline justify-between gap-3">
+                  <dt className="text-xs text-fg-muted">
+                    {row.label?.[lang] ?? row.field}
+                  </dt>
+                  <dd className="text-sm font-medium tabular-nums text-fg">
+                    {String(valeur)}
+                    {row.suffix ?? ""}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      )}
 
       {/*
         Plein écran. Placé dans le flux plutôt qu'en surimpression sur la

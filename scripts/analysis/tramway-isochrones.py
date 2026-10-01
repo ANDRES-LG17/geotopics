@@ -49,11 +49,22 @@ ATELIER = os.path.join(RACINE, "geodata", "2026-10-tramway-quebec")
 #: à dire dans la note du lab.
 VITESSE_KMH = 4.8
 
-#: Durée de marche retenue, en minutes.
-MINUTES = 15
+#: Paliers de temps calculés, en minutes.
+#:
+#: Six plutôt qu'un seul : le lab laisse le lecteur faire varier la durée, et
+#: voir l'aire grandir dit quelque chose qu'une seule forme ne dit pas — on
+#: découvre que la marche s'étend le long de quelques axes avant de remplir les
+#: quartiers.
+#:
+#: Six paliers suffisent à ce que le mouvement paraisse continu. Le graphe n'est
+#: parcouru qu'UNE fois par station, jusqu'au plus grand palier ; les six formes
+#: sont ensuite découpées dans ce même parcours. Ajouter un palier ne coûte donc
+#: que son polygone, pas un calcul de plus.
+PALIERS_MIN = [3, 5, 7, 10, 12, 15]
 
-#: Distance franchie, en mètres. 4,8 km/h × 15 min = 1 200 m.
-PORTEE_M = VITESSE_KMH * 1000 / 60 * MINUTES
+#: Distance franchie pour une durée, en mètres. 4,8 km/h × 15 min = 1 200 m.
+def portee_m(minutes):
+    return VITESSE_KMH * 1000 / 60 * minutes
 
 #: Demi-largeur du couloir dessiné autour des rues atteintes, en mètres.
 #:
@@ -68,6 +79,11 @@ COULOIR_M = 40
 #: Prudente à dessein : simplifier une isochrone coupe d'abord ses extrémités
 #: fines — les rues qui s'enfoncent le plus loin — c'est-à-dire l'information.
 SIMPLIFICATION_M = 8
+
+#: Nombre de décimales des coordonnées exportées. 4 ≈ 11 m à cette latitude.
+#: C'est la règle de `public/data/README.md` : au-delà on transporte une
+#: précision que la donnée ne garantit pas, et le fichier grossit pour rien.
+DECIMALES = 4
 
 #: Rayon de recherche du nœud de départ autour d'une station, en mètres.
 ACCROCHE_M = 120
@@ -122,48 +138,121 @@ def noeud_le_plus_proche(graphe, point_plan, rayon=ACCROCHE_M):
     return meilleur, (distance**0.5 if meilleur else None)
 
 
-def isochrone(graphe, depart, portee=PORTEE_M):
-    """Polygone de ce qu'on atteint à pied depuis `depart`.
+def isochrones(graphe, depart, paliers=PALIERS_MIN):
+    """Un polygone par palier de temps, depuis un seul parcours du graphe.
 
-    Renvoie aussi la longueur de rue parcourue : une isochrone étendue sur peu
-    de rues (un boulevard) ne dessert pas comme une isochrone compacte sur un
-    réseau dense (une trame de quartier).
+    Le graphe n'est parcouru qu'une fois, jusqu'au plus grand palier : les
+    distances obtenues servent ensuite à découper chaque forme. Six paliers ne
+    coûtent donc pas six calculs.
+
+    Renvoie, pour chaque palier, le polygone et la longueur de rue parcourue.
+    Cette longueur n'est pas un doublon de la superficie : une aire étendue le
+    long d'un boulevard ne dessert pas comme une aire compacte sur une trame
+    dense, et le rapport entre les deux le dit.
     """
+    portee_max = portee_m(max(paliers))
     atteints = nx.single_source_dijkstra_path_length(
-        graphe, depart, cutoff=portee, weight="poids"
+        graphe, depart, cutoff=portee_max, weight="poids"
     )
 
-    segments = []
-    metres_de_rue = 0.0
-    for a, b, donnees in graphe.edges(data=True):
-        da, db = atteints.get(a), atteints.get(b)
-        if da is None and db is None:
-            continue
-        if da is not None and db is not None:
-            segments.append(LineString([a, b]))
-            metres_de_rue += donnees["poids"]
-            continue
-        # Une seule extrémité atteinte : la marche s'arrête au milieu de
-        # l'arête. On tronque au lieu de la prendre ou de la jeter en entier —
-        # sinon l'isochrone déborde ou se coupe net à chaque intersection.
-        proche, loin = (a, b) if da is not None else (b, a)
-        reste = portee - atteints[proche]
-        if reste <= 0:
-            continue
-        part = min(1.0, reste / donnees["poids"])
-        bout = (
-            proche[0] + (loin[0] - proche[0]) * part,
-            proche[1] + (loin[1] - proche[1]) * part,
-        )
-        segments.append(LineString([proche, bout]))
-        metres_de_rue += donnees["poids"] * part
+    resultats = []
+    for minutes in sorted(paliers):
+        portee = portee_m(minutes)
+        segments = []
+        metres_de_rue = 0.0
 
-    if not segments:
-        return None, 0.0, 0
+        for a, b, donnees in graphe.edges(data=True):
+            da, db = atteints.get(a), atteints.get(b)
+            # Une arête dont aucune extrémité n'est atteinte DANS CE PALIER est
+            # hors sujet : `atteints` porte les distances jusqu'au palier
+            # maximal, il faut donc comparer, pas seulement tester l'absence.
+            da = da if da is not None and da <= portee else None
+            db = db if db is not None and db <= portee else None
 
-    forme = unary_union(segments).buffer(COULOIR_M, resolution=8)
-    forme = forme.simplify(SIMPLIFICATION_M, preserve_topology=True)
-    return forme, metres_de_rue, len(atteints)
+            if da is None and db is None:
+                continue
+            if da is not None and db is not None:
+                segments.append(LineString([a, b]))
+                metres_de_rue += donnees["poids"]
+                continue
+
+            # Une seule extrémité atteinte : la marche s'arrête au milieu de
+            # l'arête. On tronque au prorata au lieu de la prendre ou de la
+            # jeter en entier — sinon l'isochrone déborde ou se coupe net à
+            # chaque intersection.
+            proche = a if da is not None else b
+            loin = b if da is not None else a
+            reste = portee - atteints[proche]
+            if reste <= 0:
+                continue
+            part = min(1.0, reste / donnees["poids"])
+            bout = (
+                proche[0] + (loin[0] - proche[0]) * part,
+                proche[1] + (loin[1] - proche[1]) * part,
+            )
+            segments.append(LineString([proche, bout]))
+            metres_de_rue += donnees["poids"] * part
+
+        if not segments:
+            resultats.append((minutes, None, 0.0))
+            continue
+
+        forme = unary_union(segments).buffer(COULOIR_M, resolution=8)
+        forme = forme.simplify(SIMPLIFICATION_M, preserve_topology=True)
+        resultats.append((minutes, forme, metres_de_rue))
+
+    return resultats
+
+
+def charger_population(chemin_geo, chemin_pop):
+    """Aires de diffusion du recensement, projetées, avec leur population.
+
+    Renvoie une liste de (polygone, habitants). Les aires sans population
+    déclarée — un parc, une zone industrielle — sont gardées à zéro plutôt
+    qu'écartées : elles comptent dans la surface, pas dans les habitants.
+    """
+    from shapely.geometry import shape
+    from shapely.ops import transform
+
+    with open(chemin_geo, encoding="utf-8") as f:
+        geo = json.load(f)
+    with open(chemin_pop, encoding="utf-8") as f:
+        pop = json.load(f)
+
+    def _t(x, y, z=None):
+        return VERS_PLAN.transform(x, y)
+
+    aires = []
+    for entite in geo["features"]:
+        adidu = entite["properties"].get("ADIDU")
+        forme = transform(_t, shape(entite["geometry"]))
+        if not forme.is_valid:
+            forme = forme.buffer(0)
+        aires.append((forme, pop.get(adidu, 0)))
+    return aires
+
+
+def population_dans(forme, aires):
+    """Habitants d'un polygone, par pondération de surface.
+
+    MÉTHODE ET SA LIMITE — une aire de diffusion tombe rarement entière dans
+    une isochrone. On compte donc la part de ses habitants proportionnelle à la
+    part de sa surface recouverte, ce qui suppose la population **uniformément
+    répartie** dans l'aire. C'est faux dans le détail : un secteur qui mêle un
+    parc et une tour concentre ses habitants d'un côté. À l'échelle d'une aire
+    de diffusion — quelques centaines de personnes sur quelques pâtés — l'écart
+    reste acceptable, et c'est la convention des études de desserte.
+
+    À dire dans la note du lab : le chiffre est une estimation, pas un
+    décompte.
+    """
+    total = 0.0
+    for aire, habitants in aires:
+        if habitants == 0 or not forme.intersects(aire):
+            continue
+        part = forme.intersection(aire).area / aire.area
+        total += habitants * part
+    return total
 
 
 def vers_wgs(geometrie):
@@ -172,7 +261,7 @@ def vers_wgs(geometrie):
 
     def _t(x, y, z=None):
         lon, lat = VERS_WGS.transform(x, y)
-        return round(lon, 4), round(lat, 4)
+        return round(lon, DECIMALES), round(lat, DECIMALES)
 
     return transform(_t, geometrie)
 
@@ -197,6 +286,19 @@ def main():
     with open(stations, encoding="utf-8") as f:
         liste = json.load(f)
 
+    # La population est facultative : sans elle, le lab montre les surfaces et
+    # tait les habitants plutôt que de refuser de tourner.
+    geo_ad = os.path.join(ATELIER, "00-brut", "statcan", "aires-diffusion.geojson")
+    pop_ad = os.path.join(ATELIER, "00-brut", "statcan", "population-ad.json")
+    aires = None
+    if os.path.exists(geo_ad) and os.path.exists(pop_ad):
+        print("Lecture du recensement…")
+        aires = charger_population(geo_ad, pop_ad)
+        habitants = sum(h for _, h in aires)
+        print(f"  {len(aires)} aires de diffusion · {habitants:,} habitants".replace(",", " "))
+    else:
+        print("Recensement absent — les populations ne seront pas calculées.")
+
     entites = []
     for station in liste:
         point = VERS_PLAN.transform(station["lon"], station["lat"])
@@ -205,30 +307,46 @@ def main():
             print(f"  ⚠ {station['nom']} : aucun nœud à moins de {ACCROCHE_M} m")
             continue
 
-        forme, metres, noeuds = isochrone(graphe, depart)
-        if forme is None or forme.is_empty:
-            print(f"  ⚠ {station['nom']} : isochrone vide")
-            continue
+        print(f"\n  {station['nom']}  (accroche {ecart:.0f} m)")
+        for minutes, forme, metres in isochrones(graphe, depart):
+            if forme is None or forme.is_empty:
+                print(f"    {minutes:2d} min : vide")
+                continue
 
-        superficie_ha = forme.area / 10_000
-        print(
-            f"  {station['nom']:<28} {superficie_ha:6.1f} ha · "
-            f"{metres / 1000:5.1f} km de rue · accroche {ecart:.0f} m"
-        )
+            superficie_ha = forme.area / 10_000
+            # Ce qu'un cercle du même rayon aurait prétendu couvrir. C'est le
+            # propos du lab : l'écart entre les deux est ce que le terrain
+            # retranche, et il n'est pas le même partout.
+            disque_ha = 3.141592653589793 * (portee_m(minutes) ** 2) / 10_000
+            part = superficie_ha / disque_ha * 100
 
-        entites.append({
-            "type": "Feature",
-            "properties": {
+            habitants = population_dans(forme, aires) if aires else None
+            pop_txt = f" · {habitants:7.0f} hab" if habitants is not None else ""
+            print(
+                f"    {minutes:2d} min : {superficie_ha:6.1f} ha "
+                f"({part:4.0f} % du disque) · {metres / 1000:5.1f} km de rue{pop_txt}"
+            )
+
+            proprietes = {
                 "couche": "aire_marche",
                 "station": station["nom"],
                 "ordre": station.get("ordre"),
+                "minutes": minutes,
                 "superficie_ha": round(superficie_ha, 1),
                 "rue_km": round(metres / 1000, 2),
-                "minutes": MINUTES,
+                # Pour le panneau : « à pied 309 ha, à vol d'oiseau 452 ».
+                "disque_ha": round(disque_ha, 1),
+                "part_disque_pct": round(part),
                 "accroche_m": round(ecart),
-            },
-            "geometry": mapping(vers_wgs(forme)),
-        })
+            }
+            if habitants is not None:
+                proprietes["population"] = round(habitants)
+
+            entites.append({
+                "type": "Feature",
+                "properties": proprietes,
+                "geometry": mapping(vers_wgs(forme)),
+            })
 
     sortie = os.path.join(ATELIER, "30-export", "aires-marche-v1.geojson")
     os.makedirs(os.path.dirname(sortie), exist_ok=True)
@@ -236,27 +354,46 @@ def main():
         json.dump({
             "type": "FeatureCollection",
             "metadata": {
-                "titre": f"Aires de marche de {MINUTES} minutes — stations du tramway",
+                "titre": "Aires de marche autour des stations du tramway",
                 "script": "scripts/analysis/tramway-isochrones.py",
+                "genere_le": __import__("datetime").date.today().isoformat(),
+                "paliers_min": sorted(PALIERS_MIN),
                 "methode": (
                     f"Parcours de graphe (Dijkstra) sur le réseau marchable "
-                    f"d'OpenStreetMap, borné à {PORTEE_M:.0f} m "
-                    f"({VITESSE_KMH} km/h pendant {MINUTES} min). Couloir de "
-                    f"{COULOIR_M} m autour des rues atteintes."
+                    f"d'OpenStreetMap, à {VITESSE_KMH} km/h. Un polygone par "
+                    f"palier de temps, découpé dans un parcours unique. "
+                    f"Couloir de {COULOIR_M} m autour des rues atteintes, car "
+                    f"une rue dessert les bâtiments qui la bordent et pas son "
+                    f"seul axe. Pas d'enveloppe convexe : elle comblerait les "
+                    f"découpes, qui sont l'information."
                 ),
                 "limites": (
-                    "La vitesse ne tient compte ni de la pente ni de l'hiver. "
-                    "Les escaliers sont franchis sans pénalité. La complétude "
-                    "des trottoirs dans OSM varie selon les secteurs."
+                    "La vitesse ne tient compte ni de la pente ni de l'hiver "
+                    "québécois. Les escaliers sont franchis sans pénalité, ce "
+                    "qui rend la Haute-Ville un peu trop facile d'accès. La "
+                    "complétude des trottoirs dans OpenStreetMap varie selon "
+                    "les secteurs. Les positions des stations sont saisies à "
+                    "la main — voir le champ precision_m."
                 ),
                 "source": "OpenStreetMap (ODbL)",
+                "attribution": "© les contributeurs d'OpenStreetMap",
             },
             "features": entites,
         }, f, ensure_ascii=False)
 
     poids = os.path.getsize(sortie) / 1024
+    stations_faites = len({e["properties"]["station"] for e in entites})
     print(f"\n  {os.path.relpath(sortie, RACINE)}")
-    print(f"  {len(entites)} aires · {poids:.1f} ko")
+    print(
+        f"  {len(entites)} polygones · {stations_faites} stations × "
+        f"{len(PALIERS_MIN)} paliers · {poids:.1f} ko"
+    )
+    # Projection pour les 29 stations : c'est la contrainte qui décide s'il
+    # faudra simplifier davantage ou passer aux tuiles vectorielles.
+    if stations_faites:
+        projete = poids / stations_faites * 29
+        verdict = "✓" if projete < 500 else ("acceptable" if projete < 2048 else "✗ HORS BUDGET")
+        print(f"  projection 29 stations : {projete:.0f} ko  {verdict}")
 
 
 if __name__ == "__main__":

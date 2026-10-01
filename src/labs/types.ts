@@ -308,6 +308,50 @@ export type LabBasemap =
       }>;
     };
 
+/**
+ * Une ligne d'infobulle ou de panneau.
+ *
+ * Partagée par `hover` et `select` : ce qu'on écrit d'une entité survolée et
+ * d'une entité choisie obéit aux mêmes règles, et les décrire deux fois
+ * garantirait qu'elles divergent.
+ */
+export type LabHoverRow = {
+  field: string;
+  label?: Bilingual;
+  /** Texte ajouté après la valeur, ex. « % » ou « ha ». */
+  suffix?: string;
+  /** Ligne de titre : affichée en gras, sans étiquette. */
+  title?: boolean;
+  /**
+   * Rend le champ comme une courbe plutôt qu'un nombre.
+   *
+   * Le champ doit contenir un objet `{ année: valeur }`. Une série de 25
+   * points ne se lit pas comme deux chiffres : la forme de la courbe dit ce
+   * qu'un « +89,8 % » laisse deviner.
+   */
+  spark?: {
+    /** Couleur de la courbe. */
+    color: string;
+    /** Hauteur en pixels. */
+    height?: number;
+  };
+  /**
+   * Rend le champ comme une part d'un tout, en barre.
+   *
+   * `max` est la valeur qui remplit la barre — 100 pour un pourcentage.
+   */
+  bar?: { color: string; max: number };
+  /**
+   * N'affiche la ligne que si une autre propriété vaut cette valeur.
+   *
+   * Une même infobulle sert des entités de nature différente : une municipalité
+   * du bassin n'a pas les mêmes champs qu'un lac, ni le même propos qu'une
+   * municipalité desservie. La condition évite d'écrire des lignes qui n'ont
+   * pas de sens pour ce qui est survolé.
+   */
+  when?: { field: string; equals: string | number | boolean };
+};
+
 export type LabDefinition = {
   /** Identifiant stable, repris dans le champ `lab` d'une entrée. */
   id: string;
@@ -348,6 +392,65 @@ export type LabDefinition = {
      */
     position?: [number, number, number];
   };
+  /**
+   * Entités que le lecteur peut choisir d'un clic, et ce qui s'affiche alors.
+   *
+   * POURQUOI UNE SÉLECTION ET PAS UN SURVOL — le survol est fugace : il montre,
+   * puis disparaît. Une sélection persiste, et c'est ce qu'il faut dès que le
+   * lecteur doit AGIR sur ce qu'il a choisi — faire varier une durée, lire
+   * plusieurs chiffres, comparer. Elle fonctionne aussi au doigt, là où le
+   * survol n'existe pas.
+   *
+   * La sélection ouvre un panneau latéral, qui devient une feuille au bas de
+   * l'écran sur téléphone — un panneau de côté n'a pas la place d'exister sous
+   * 640 px.
+   */
+  select?: {
+    /** Indices des couches de `layers` qui répondent au clic. */
+    layers: number[];
+    /**
+     * Propriété qui identifie l'entité choisie, ex. `"station"`.
+     *
+     * Sa valeur sert à filtrer les couches liées : c'est ainsi qu'un clic sur
+     * une station fait apparaître SON aire de marche et pas les autres.
+     */
+    key: string;
+    /** Titre du panneau : la propriété à afficher en tête. */
+    title: string;
+    /** Lignes du panneau, mêmes règles que celles de `hover`. */
+    rows: LabHoverRow[];
+    /**
+     * Couches qui ne se dessinent que pour l'entité choisie.
+     *
+     * Elles restent vides tant que rien n'est sélectionné : c'est ce qui évite
+     * d'afficher vingt-neuf aires de marche superposées, illisibles.
+     */
+    revealLayers?: number[];
+    /**
+     * Curseur de temps, pour les labs dont les couches révélées existent à
+     * plusieurs paliers.
+     *
+     * Le lecteur fait varier la durée et voit l'aire grandir — ce qu'une forme
+     * figée ne montre pas : la marche s'étend d'abord le long de quelques axes,
+     * puis remplit les quartiers.
+     *
+     * Les paliers sont PRÉCALCULÉS : le curseur choisit parmi des formes déjà
+     * écrites, il ne calcule rien. C'est la règle du carnet — le travail lourd
+     * se fait une fois, dans un script, et le site sert du statique.
+     */
+    slider?: {
+      /** Propriété qui porte la valeur du palier, ex. `"minutes"`. */
+      field: string;
+      /** Paliers disponibles, dans l'ordre. Doivent exister dans les données. */
+      steps: number[];
+      /** Palier affiché à l'ouverture. Absent = le dernier. */
+      start?: number;
+      /** Libellé du curseur, ex. « Durée de marche ». */
+      label: Bilingual;
+      /** Unité affichée après la valeur, ex. « min ». */
+      suffix?: string;
+    };
+  };
   /** Légende affichée sous la carte. Sans elle, les couleurs ne disent rien. */
   legend?: Array<{ color: string; label: Bilingual }>;
   /**
@@ -372,42 +475,7 @@ export type LabDefinition = {
      * Lignes de l'infobulle. `field` nomme une propriété de l'entité ; la
      * ligne disparaît si elle est absente, ce qui évite les « undefined ».
      */
-    rows: Array<{
-      field: string;
-      label?: Bilingual;
-      /** Texte ajouté après la valeur, ex. « % » ou « ha ». */
-      suffix?: string;
-      /** Ligne de titre : affichée en gras, sans étiquette. */
-      title?: boolean;
-      /**
-       * Rend le champ comme une courbe plutôt qu'un nombre.
-       *
-       * Le champ doit contenir un objet `{ année: valeur }`. Une série de 25
-       * points ne se lit pas comme deux chiffres : la forme de la courbe dit
-       * ce qu'un « +89,8 % » laisse deviner.
-       */
-      spark?: {
-        /** Couleur de la courbe. */
-        color: string;
-        /** Hauteur en pixels. */
-        height?: number;
-      };
-      /**
-       * Rend le champ comme une part d'un tout, en barre.
-       *
-       * `max` est la valeur qui remplit la barre — 100 pour un pourcentage.
-       */
-      bar?: { color: string; max: number };
-      /**
-       * N'affiche la ligne que si une autre propriété vaut cette valeur.
-       *
-       * Une même infobulle sert des entités de nature différente : une
-       * municipalité du bassin n'a pas les mêmes champs qu'un lac, ni le même
-       * propos qu'une municipalité desservie. La condition évite d'écrire des
-       * lignes qui n'ont pas de sens pour ce qui est survolé.
-       */
-      when?: { field: string; equals: string | number | boolean };
-    }>;
+    rows: LabHoverRow[];
   };
   /**
    * Fichier proposé au téléchargement sous la carte. Reste accessible sans
