@@ -216,6 +216,69 @@ s'appuiera sur une donnée à seuil rencontrera le même piège.
    son rendu : capture blanche. Il faut piloter par le protocole DevTools et
    lire les pixels du canvas. Script jetable dans le dossier de travail.
 
+### Les aires de marche : essai sur deux stations
+
+**Fait** — écrit `scripts/analysis/tramway-isochrones.py`, calculé les aires de
+marche de 15 minutes autour de Jean-Paul-L'Allier et Saint-Roch.
+
+**Pourquoi un essai avant de saisir les 29 stations** — la méthode reposait sur
+une inconnue : *le réseau piéton d'OSM est-il assez complet pour que le calcul
+veuille dire quelque chose ?* Une heure de saisie manuelle aurait été perdue si
+la réponse était non.
+
+**Le réseau est bon, et mieux que prévu :**
+
+| | |
+| --- | --- |
+| Voies marchables | 5 878 |
+| Sommets | 32 513 |
+| Nœuds du graphe / arêtes | 22 371 / 26 555 |
+| Composantes connexes | 31, dont **une qui contient 99 %** |
+| Escaliers | 238, dont **141 dans la zone de la falaise** |
+
+Les 99 % en une seule composante disent que le graphe n'est pas fragmenté — le
+piège classique de ce genre de calcul. Et les escaliers nommés — Escalier de la
+Chapelle, Escalier Lépine, Escalier du Faubourg — sont bien les voies réelles
+qui montent en Haute-Ville.
+
+**Le résultat, et c'est ce qu'on cherchait :**
+
+| | Jean-Paul-L'Allier | Saint-Roch |
+| --- | --- | --- |
+| Superficie atteignable | **314,2 ha** | **308,8 ha** |
+| Disque théorique de 1 200 m | 452 ha | 452 ha |
+| **Part réelle** | **69 %** | **68 %** |
+| Rue parcourue | 129,1 km | 119,9 km |
+| Trous intérieurs du polygone | 36 | 29 |
+
+**Un cercle aurait surestimé d'un tiers.** Les 31 % manquants sont ce que la
+falaise, la rivière Saint-Charles et l'autoroute Dufferin retranchent — et ils
+ne se répartissent pas également dans toutes les directions. La forme s'étire
+jusqu'à 2,2 km sur un axe tout en couvrant bien moins de surface : elle a des
+tentacules, pas un rayon.
+
+Les trous intérieurs sont les îlots que l'on contourne sans les traverser.
+
+**Décisions de méthode, inscrites dans le script :**
+
+| Choix | Raison |
+| --- | --- |
+| 4,8 km/h × 15 min = 1 200 m | valeur usuelle des études de transport, et celle de `tramquebec.00h11.ca` — garde les résultats comparables |
+| Couloir de 40 m autour des rues atteintes | une rue dessert les bâtiments qui la bordent, pas son seul axe. 40 m ≈ profondeur d'un îlot de Québec |
+| **Pas d'enveloppe convexe** | elle comblerait les trous et les découpes, c'est-à-dire l'information |
+| Arêtes tronquées au prorata | sans cela l'isochrone déborde ou se coupe net à chaque intersection |
+| Nœuds arrondis au mètre | recolle deux voies qui partagent un sommet sans partager son identifiant OSM. Sans cet arrondi, le graphe explose en milliers de composantes |
+
+**Limites assumées, écrites dans les métadonnées du GeoJSON** — la vitesse ne
+tient compte ni de la pente ni de l'hiver québécois ; les escaliers sont
+franchis sans pénalité, ce qui rend la Haute-Ville un peu trop facile d'accès.
+
+**À vérifier avant d'étendre aux 29 stations** — la densité de trottoirs relevée
+ici est celle du **centre**. À Sainte-Foy ou Charlesbourg, OSM ne porte
+peut-être que des axes de chaussée, ce qui gonflerait les isochrones de
+banlieue. Le biais irait alors à l'inverse de ce que le lab veut montrer :
+**contrôle secteur par secteur obligatoire.**
+
 ---
 
 ## Décisions structurantes

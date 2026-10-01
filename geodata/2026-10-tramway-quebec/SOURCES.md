@@ -128,6 +128,74 @@ centrale du lab.
 
 ---
 
+## Réseau marchable — OpenStreetMap
+
+| | |
+| --- | --- |
+| **Fournisseur** | OpenStreetMap, via l'API Overpass |
+| **Téléchargé le** | 2026-10-01 |
+| **Emprise** | `46.7930, -71.2600 → 46.8290, -71.1950` — Saint-Roch et la colline, pour l'essai sur une station |
+| **Licence** | ODbL 1.0 |
+| **Fichier** | `00-brut/osm/reseau-pieton.json` |
+| **SCR d'origine** | EPSG:4326 |
+
+Treize requêtes, **une par type de voie** : les regex larges expirent (504).
+Le script de récupération est dans le dossier de travail.
+
+### Ce que contient le réseau, et pourquoi ça compte
+
+La question qui pouvait faire tomber la méthode : **les trottoirs sont-ils
+cartographiés ?** Sans eux, l'isochrone se calcule sur des axes de chaussée et
+sort trop généreuse — sans que rien ne le signale.
+
+Relevé sur le secteur de Saint-Roch :
+
+| | |
+| --- | --- |
+| Voies piétonnes | **2 013** |
+| dont `footway=sidewalk` (trottoirs) | 444 |
+| dont `footway=crossing` (traversées) | 383 |
+| dont `highway=steps` (escaliers) | **181** |
+
+**Les 181 escaliers sont la pièce décisive.** C'est par eux qu'on monte de la
+Basse-Ville à la Haute-Ville. Les écarter rendrait la colline artificiellement
+inaccessible ; les garder sans pénaliser leur pente la rend un peu trop facile.
+Le second biais est le plus honnête des deux, et il est dit dans la note.
+
+**Limite à vérifier avant d'étendre aux 29 stations** — cette densité est celle
+du centre. À Sainte-Foy ou Charlesbourg, les trottoirs sont peut-être absents
+d'OSM, ce qui gonflerait les isochrones de banlieue. Le biais irait alors à
+l'envers de ce que le lab veut montrer : **à contrôler secteur par secteur.**
+
+---
+
+## Positions des stations — saisie manuelle
+
+| | |
+| --- | --- |
+| **Fichier** | `15-saisie-manuelle/stations-tramcite.json` |
+| **Méthode** | repérage des lieux nommés par le plan officiel, coordonnées relevées via Nominatim |
+| **Précision déclarée** | 50 à 100 m selon la station, champ `precision_m` |
+| **Commencé le** | 2026-10-01 |
+
+Les 29 stations ne figurent pas dans OSM (voir plus haut). Leurs **noms** sont
+connus et vérifiés ; leurs **coordonnées** sont saisies ici, une par une, avec
+la source de chaque repère.
+
+**Ce que la précision coûte** — une aire de marche de 1 200 m déplacée de 100 m
+ne couvre plus tout à fait le même quartier, et le chiffre de population
+desservie bouge avec elle. C'est pourquoi chaque station porte son
+`precision_m` et sa `source` : le lecteur doit pouvoir juger.
+
+Deux stations saisies pour l'essai :
+
+| Station | Repère | Précision |
+| --- | --- | --- |
+| Jean-Paul-L'Allier | Jardin Jean-Paul-L'Allier — la documentation place l'entrée du tunnel à ce jardin | 50 m |
+| Saint-Roch | Place Jacques-Cartier, rue de la Couronne — pôle d'échanges annoncé dans ce secteur | 100 m |
+
+---
+
 ## À télécharger — fiches à remplir au moment de le faire
 
 - [ ] **Population par aire de diffusion** — recensement 2021, Statistique

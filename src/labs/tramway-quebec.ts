@@ -101,9 +101,38 @@ const tramwayQuebec: LabDefinition = {
 
   sources: {
     tramway: "/data/tramway-quebec-v1.geojson",
+    marche: "/data/tramway-aires-marche-v1.geojson",
   },
 
   layers: [
+    // ESSAI — deux stations seulement, pour valider la méthode avant de saisir
+    // les 29. À remplacer par le jeu complet.
+
+    // A — l'aire de marche de 15 minutes, en aplat.
+    //
+    // Ce n'est PAS un disque. La forme suit les rues : elle s'étend dans une
+    // trame dense et s'arrête devant une coupure. Mesurée sur Saint-Roch, elle
+    // couvre 62 % de ce qu'un rayon de 1,2 km laisserait croire — le tiers
+    // manquant est ce que la falaise, la rivière et l'autoroute retranchent.
+    {
+      kind: "fill",
+      source: "marche",
+      filter: ["==", ["get", "couche"], "aire_marche"],
+      color: "#0e7490",
+      opacity: 0.22,
+    },
+
+    // B — son contour, qui rend les découpes lisibles.
+    {
+      kind: "line",
+      source: "marche",
+      filter: ["==", ["get", "couche"], "aire_marche"],
+      color: "#0e7490",
+      width: 1.5,
+      opacity: 0.7,
+      join: "round",
+    },
+
     // 0 — Le tracé à l'air libre, en halo clair.
     //
     // Un trait seul se perd dès qu'il croise une route du fond de la même
@@ -181,6 +210,17 @@ const tramwayQuebec: LabDefinition = {
       opacity: 0.8,
       dash: [1, 1.5],
       cap: "butt",
+    },
+
+    // 5 — Les stations, au-dessus de tout : c'est ce qu'on vient chercher.
+    {
+      kind: "circle",
+      source: "marche",
+      filter: ["==", ["get", "couche"], "station"],
+      color: "#ffffff",
+      radius: 7,
+      strokeColor: TRAM,
+      strokeWidth: 3,
     },
   ],
 
