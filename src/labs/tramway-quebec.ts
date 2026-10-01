@@ -68,7 +68,7 @@ const TRAM_SOMBRE = "#7c2d12";
  * ce que les scènes feront, une fois les stations saisies.
  */
 const CENTRE: [number, number, number, number] = [
-  -71.2415, 46.8020, -71.2125, 46.8185,
+  -71.2322, 46.8068, -71.2161, 46.8152,
 ];
 
 // L'emprise complète du tracé (-71,346 / 46,750 → -71,205 / 46,852) est écrite
@@ -195,7 +195,23 @@ const tramwayQuebec: LabDefinition = {
    * `pitch: 50` est au-dessus du seuil où `LabMap` redescend l'angle sur écran
    * étroit (40). Assumé : sur téléphone, une vue moins rasante se lit mieux.
    */
-  view: { bounds: CENTRE, pitch: 55, bearing: -24 },
+  view: {
+    bounds: CENTRE,
+    // Le plancher, et c'est le réglage le plus important du lab.
+    //
+    // Cadrer une emprise donne un zoom qui dépend de la fenêtre : la même
+    // carte ouvrait au 15,0 sur un grand écran et au 13,9 sur un téléphone.
+    // Or les hauteurs de bâtiment n'existent qu'à partir du zoom 14 — en
+    // dessous, la ville s'aplatit et il ne reste qu'un trait sur un plan.
+    // C'est précisément ce qui se produisait, sans qu'aucune erreur ne le
+    // signale.
+    //
+    // 14,2 plutôt que 14 : une marge, parce que le calcul de cadrage dépend
+    // aussi du `padding` et des arrondis.
+    minZoom: 14.2,
+    pitch: 55,
+    bearing: -24,
+  },
 
   /**
    * Bornes de zoom, dictées par la donnée du fond.
@@ -205,15 +221,16 @@ const tramwayQuebec: LabDefinition = {
    * Québec : au zoom 13 la couche `building` est là, le champ de hauteur non.
    * En dessous de 14, il n'y a donc pas de volume possible.
    *
-   * `minZoom: 13` laisse reculer d'un cran pour se repérer — le lecteur perd
-   * alors les volumes, mais garde le tracé et la trame des rues. En dessous, la
-   * carte cesserait de parler de son sujet.
+   * `minZoom: 13,6` laisse reculer d'un demi-cran pour se repérer. Au-delà, les
+   * volumes s'effaceraient et la carte cesserait de parler de son sujet : mieux
+   * vaut empêcher le mouvement que livrer une vue vide de ce qu'on est venu
+   * voir.
    *
    * Au-delà de 14, le moteur agrandit la dernière tuile : les contours
    * s'adoucissent, les volumes restent justes. 17,5 est la limite où cela reste
    * net.
    */
-  minZoom: 13,
+  minZoom: 13.6,
   maxZoom: 17.5,
 
   light: {

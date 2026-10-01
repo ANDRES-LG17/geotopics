@@ -164,6 +164,45 @@ peut pas tout voir d'un coup, autant faire avancer le lecteur.
 agrandit la dernière tuile. Jusqu'où cela reste-t-il net ? `maxZoom: 17.5` est un
 pari à confirmer à l'œil.
 
+### Le cadrage dépend de la fenêtre — et c'était le vrai défaut
+
+**Constaté par l'usage** : la carte s'ouvrait sur un simple trait, sans aucun
+bâtiment. Ma capture de contrôle, elle, les montrait.
+
+**La cause** — cadrer une emprise donne un zoom qui dépend de la **taille du
+conteneur**. La capture tombait au zoom **14,05** ; le seuil des hauteurs est à
+**14,00**. Cinq centièmes de marge. Toute fenêtre plus petite passait en dessous,
+et la ville s'aplatissait.
+
+| Fenêtre | Zoom d'ouverture (ancienne emprise) | Volumes |
+| --- | --- | --- |
+| Écran large 1800×900 | 14,60 | oui |
+| Ma capture 1326×630 | **14,05** | oui, de justesse |
+| Fenêtre moyenne 1200×600 | 13,97 | **non** |
+| Fenêtre étroite 900×500 | 13,69 | **non** |
+| Téléphone 390×560 | 13,02 | **non** |
+
+**Ce que ça coûte, et pourquoi c'est pernicieux** — aucune erreur n'est levée.
+La couche existe, elle se dessine, elle est simplement plate. Sur un lab vérifié
+une seule fois, à une seule taille de fenêtre, le défaut passe inaperçu —
+jusqu'à ce qu'un lecteur ouvre la page sur un portable.
+
+**Correction, à deux niveaux :**
+
+1. **Dans le lab** — emprise d'ouverture réduite à ~1,2 × 0,9 km sur Saint-Roch
+   et la colline ;
+2. **Dans le vocabulaire** — `minZoom` sur les vues à emprise, qui interdit au
+   cadrage de descendre sous un seuil même si l'emprise ne tient plus. Le lab
+   demande 14,2, avec de la marge cette fois.
+
+**Hypothèse assumée** — sur petit écran, l'emprise déborde du cadre. Mieux vaut
+voir une partie de la scène en volume que la scène entière à plat.
+
+**Leçon à retenir pour les labs suivants** — vérifier un rendu à **une seule
+taille de fenêtre ne prouve rien** dès qu'une couche a un seuil de zoom. Le
+plancher appartient au vocabulaire, pas au réglage d'un lab : tout lab qui
+s'appuiera sur une donnée à seuil rencontrera le même piège.
+
 ### Trois obstacles d'outillage, pour mémoire
 
 1. **Overpass exige un `User-Agent`** — sinon `406`, qui ressemble à une erreur

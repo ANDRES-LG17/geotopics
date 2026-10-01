@@ -171,7 +171,28 @@ export type LabCamera = {
 
 /** Cadrage initial : soit une emprise, soit un point et un niveau de zoom. */
 export type LabView =
-  | ({ /** `[ouest, sud, est, nord]` en degrés décimaux (WGS 84). */ bounds: [number, number, number, number] } & LabCamera)
+  | ({
+      /** `[ouest, sud, est, nord]` en degrés décimaux (WGS 84). */
+      bounds: [number, number, number, number];
+      /**
+       * Zoom en deçà duquel on refuse de descendre, même si l'emprise ne tient
+       * pas dans le conteneur.
+       *
+       * POURQUOI — cadrer une emprise donne un zoom qui dépend de la taille de
+       * la fenêtre : la même carte ouvre au zoom 15 sur un grand écran et au
+       * 13,9 sur un téléphone. C'est sans conséquence quand les données sont
+       * les nôtres, puisqu'elles s'affichent à toutes les échelles. Ça en a
+       * quand une couche du fond a un seuil : les hauteurs de bâtiment
+       * d'OpenMapTiles n'existent qu'à partir du zoom 14, et en dessous la
+       * ville s'aplatit — le lab perd son sujet sur les petits écrans sans
+       * qu'aucune erreur ne le signale.
+       *
+       * Le prix est assumé : au-delà de ce plancher, l'emprise déborde du
+       * cadre. Mieux vaut voir une partie de la scène en volume que la scène
+       * entière à plat.
+       */
+      minZoom?: number;
+    } & LabCamera)
   | ({ center: [number, number]; zoom: number } & LabCamera);
 
 /**

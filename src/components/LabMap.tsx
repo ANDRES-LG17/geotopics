@@ -184,6 +184,22 @@ function cameraFor(view: LabView, narrow: boolean) {
   };
 }
 
+/**
+ * Options de `fitBounds`, avec le plancher de zoom d'une vue à emprise.
+ *
+ * `minZoom` dit à MapLibre de ne pas descendre en dessous d'un niveau, quitte à
+ * ce que l'emprise déborde du cadre. C'est ce qui garde une scène en volume sur
+ * un écran étroit, là où le cadrage automatique l'aplatirait.
+ */
+function fitOptions(view: LabView) {
+  return {
+    padding: 24,
+    ...("bounds" in view && view.minZoom !== undefined
+      ? { minZoom: view.minZoom }
+      : {}),
+  };
+}
+
 export default function LabMap({
   lab,
   label,
@@ -299,7 +315,7 @@ export default function LabMap({
       ...("bounds" in lab.view
         ? {
             bounds: boundsPair(lab.view.bounds),
-            fitBoundsOptions: { padding: 24 },
+            fitBoundsOptions: fitOptions(lab.view),
           }
         : { center: lab.view.center, zoom: lab.view.zoom }),
       ...cameraFor(lab.view, container.clientWidth < 640),
@@ -618,7 +634,11 @@ export default function LabMap({
       const duration = animate ? target.duration ?? 1600 : 0;
 
       if ("bounds" in view) {
-        map.fitBounds(boundsPair(view.bounds), { padding: 24, ...camera, duration });
+        map.fitBounds(boundsPair(view.bounds), {
+          ...fitOptions(view),
+          ...camera,
+          duration,
+        });
       } else {
         map.easeTo({ center: view.center, zoom: view.zoom, ...camera, duration });
       }
