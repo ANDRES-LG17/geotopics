@@ -364,6 +364,14 @@ export default function LabMap({
           if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
         }
 
+        // Les couches repeintes sont exclues de l'atténuation : `fade` parcourt
+        // tout le style, et écraserait l'opacité qu'on vient de poser.
+        const preservees = new Set(
+          (basemap.restyleLayers ?? [])
+            .filter((c) => c.keepOpacity)
+            .map((c) => c.id),
+        );
+
         if (basemap.fade !== undefined) {
           // Chaque type de couche a sa propre propriété d'opacité : il n'en
           // existe pas de globale dans la spécification de style.
@@ -380,6 +388,7 @@ export default function LabMap({
             "fill-extrusion": ["fill-extrusion-opacity"],
           };
           for (const couche of map.getStyle().layers ?? []) {
+            if (preservees.has(couche.id)) continue;
             for (const prop of proprietes[couche.type] ?? []) {
               try {
                 // Le nom de la propriété est choisi d'après le type de la
@@ -399,6 +408,63 @@ export default function LabMap({
             }
           }
         }
+
+        // Repeindre après l'atténuation : le lab a le dernier mot sur les
+        // couches qu'il réclame.
+        for (const consigne of basemap.restyleLayers ?? []) {
+          // Une couche absente du style n'est pas une erreur : un fond qui ne
+          // la porte pas ne doit pas empêcher la carte de s'afficher.
+          if (!map.getLayer(consigne.id)) continue;
+
+          if (consigne.minzoom !== undefined) {
+            // La borne haute du fond est conservée : l'abaisser ne servirait à
+            // rien, et la relever ferait disparaître la couche en zoomant.
+            const actuel = map.getLayer(consigne.id)?.maxzoom;
+            map.setLayerZoomRange(consigne.id, consigne.minzoom, actuel ?? 24);
+          }
+
+          for (const [nom, valeur] of Object.entries(consigne.layout ?? {})) {
+            try {
+              (
+                map.setLayoutProperty as (
+                  id: string,
+                  nom: string,
+                  valeur: unknown,
+                ) => void
+              )(consigne.id, nom, valeur);
+            } catch {
+              // Propriété inconnue de ce type de couche : on continue.
+            }
+          }
+
+          for (const [nom, valeur] of Object.entries(consigne.paint ?? {})) {
+            try {
+              (
+                map.setPaintProperty as (
+                  id: string,
+                  nom: string,
+                  valeur: unknown,
+                ) => void
+              )(consigne.id, nom, valeur);
+            } catch {
+              // Idem : une consigne qui ne s'applique pas est ignorée plutôt
+              // que de faire tomber la carte entière.
+            }
+          }
+        }
+      }
+
+      // La lumière n'a d'effet que sur les volumes. Posée après le fond, pour
+      // qu'elle vaille aussi pour ses extrusions repeintes.
+      if (lab.light) {
+        map.setLight({
+          anchor: "map",
+          ...(lab.light.color ? { color: lab.light.color } : {}),
+          ...(lab.light.intensity !== undefined
+            ? { intensity: lab.light.intensity }
+            : {}),
+          ...(lab.light.position ? { position: lab.light.position } : {}),
+        });
       }
 
       for (const [id, url] of Object.entries(lab.sources)) {
@@ -456,9 +522,15 @@ export default function LabMap({
               type: "line",
               source: layer.source,
               ...filter,
+              layout: {
+                ...(layer.cap ? { "line-cap": layer.cap } : {}),
+                ...(layer.join ? { "line-join": layer.join } : {}),
+              },
               paint: {
                 "line-color": colorValue(layer.color),
-                "line-width": layer.width ?? 1,
+                // Un nombre ou une expression de zoom : MapLibre accepte les
+                // deux, sa signature typée n'en connaît qu'un.
+                "line-width": (layer.width ?? 1) as number,
                 "line-opacity": layer.opacity ?? 1,
                 ...(layer.dash ? { "line-dasharray": layer.dash } : {}),
               },
@@ -590,10 +662,30 @@ export default function LabMap({
       const resume =
         `couches ${lignes.join(" ")} · source ${source ? "ok" : "ABSENTE"} · ` +
         `centre ${map.getCenter().toArray().map((v) => v.toFixed(3)).join(",")} · ` +
-        `zoom ${map.getZoom().toFixed(2)}`;
+        `zoom ${map.getZoom().toFixed(2)} · pitch ${map.getPitch().toFixed(0)}°`;
       // En console seulement : sous la carte, ce relevé prenait la place de
       // ce qu'on vient regarder.
       console.info("[lab]", lab.id, resume);
+
+      // Les couches réclamées au fond : un lab qui en repeint une veut savoir
+      // si elle a été trouvée, si elle est dans sa plage de zoom, et si elle
+      // dessine quelque chose. Trois pannes qui se ressemblent à l'écran — et
+      // qu'un identifiant changé chez le fournisseur du fond suffit à causer.
+      if (basemap.kind === "style" && basemap.restyleLayers?.length) {
+        const zoom = map.getZoom();
+        const etat = basemap.restyleLayers.map((consigne) => {
+          const couche = map.getLayer(consigne.id);
+          if (!couche) return `${consigne.id}:ABSENTE`;
+          const min = couche.minzoom ?? 0;
+          const max = couche.maxzoom ?? 24;
+          if (zoom < min || zoom > max) {
+            return `${consigne.id}:hors-zoom(${min}–${max})`;
+          }
+          const n = map.queryRenderedFeatures({ layers: [consigne.id] }).length;
+          return `${consigne.id}:${n}`;
+        });
+        console.info("[lab]", lab.id, "fond", etat.join(" "));
+      }
     });
 
     const theme = window.matchMedia("(prefers-color-scheme: dark)");

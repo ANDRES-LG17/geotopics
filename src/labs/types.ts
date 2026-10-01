@@ -102,10 +102,25 @@ export type LabLayer = LabLayerBase &
   | {
       kind: "line";
       color: LabColor;
-      width?: number;
+      /**
+       * Largeur en pixels, ou expression MapLibre pour la faire varier avec le
+       * zoom.
+       *
+       * Une largeur fixe convient à une limite administrative, qu'on regarde à
+       * une seule échelle. Elle convient mal à une ligne qu'on parcourt : trop
+       * épaisse sur une station, trop fine sur l'ensemble du tracé. Dans ce
+       * cas, une interpolation sur le zoom.
+       */
+      width?: number | unknown[];
       opacity?: number;
       /** Motif de tirets, en multiples de la largeur du trait. */
       dash?: number[];
+      /**
+       * Bouts et coins du trait. Par défaut MapLibre coupe net et pointe les
+       * angles, ce qui hache une ligne sinueuse ; `"round"` la rend continue.
+       */
+      cap?: "butt" | "round" | "square";
+      join?: "bevel" | "round" | "miter";
     }
   | {
       kind: "circle";
@@ -216,6 +231,60 @@ export type LabBasemap =
        * lab porter la lecture.
        */
       fade?: number;
+      /**
+       * Repeint des couches que le fond porte déjà, au lieu de les masquer.
+       *
+       * POURQUOI — `hideLayers` ne sait qu'éteindre. Or un fond vectoriel
+       * transporte parfois exactement ce qu'un lab veut montrer : le style
+       * Liberty d'OpenFreeMap contient une couche `building-3d` en
+       * `fill-extrusion`, dont la hauteur vient du champ `render_height` des
+       * tuiles OpenMapTiles. Ces volumes existent pour toute la ville, à toutes
+       * les échelles, et ne coûtent **aucun octet** au site.
+       *
+       * L'alternative serait de télécharger les empreintes de bâtiments et de
+       * les servir nous-mêmes : des mégaoctets de géométrie pour redessiner ce
+       * que le fond dessine déjà.
+       *
+       * Le prix est la dépendance. Si le fournisseur change son style, la
+       * couche visée peut disparaître ou changer de nom — la carte perd alors
+       * son décor, jamais ses données, qui viennent du site. Les clés de
+       * `paint` ne sont pas validées à la compilation : MapLibre lève une
+       * erreur explicite au premier affichage si l'une est inconnue.
+       *
+       * Les couches absentes du style sont ignorées en silence : un fond qui ne
+       * porte pas la couche visée ne doit pas casser le lab.
+       */
+      restyleLayers?: Array<{
+        /** Identifiant de la couche dans le style du fond, ex. `"building-3d"`. */
+        id: string;
+        /** Propriétés de peinture à écraser, ex. `{ "fill-extrusion-color": "#e0dfce" }`. */
+        paint?: Record<string, unknown>;
+        /** Propriétés de mise en page, ex. `{ visibility: "visible" }`. */
+        layout?: Record<string, unknown>;
+        /**
+         * Zoom à partir duquel la couche s'affiche.
+         *
+         * Un fond généraliste choisit ses seuils pour un usage généraliste :
+         * Liberty n'extrude ses bâtiments qu'à partir du zoom 14, parce qu'on
+         * ne regarde pas une ville en volume depuis le ciel. Un lab dont le
+         * sujet EST le volume cadre plus large, et se retrouverait sans
+         * bâtiments à l'ouverture.
+         *
+         * Le prix est réel : les tuiles d'OpenMapTiles s'arrêtent au zoom 14,
+         * donc en dessous le moteur agrandit des géométries prévues pour plus
+         * petit. Les bâtiments y paraissent lourds, et les plus fins
+         * disparaissent. À n'abaisser que de deux ou trois niveaux.
+         */
+        minzoom?: number;
+        /**
+         * Soustrait cette couche à l'atténuation de `fade`.
+         *
+         * Nécessaire quand la couche repeinte EST le sujet : `fade` parcourt
+         * tout le style, y compris les extrusions, et écraserait l'opacité
+         * qu'on vient de poser.
+         */
+        keepOpacity?: boolean;
+      }>;
     };
 
 export type LabDefinition = {
@@ -235,6 +304,29 @@ export type LabDefinition = {
   minZoom?: number;
   maxZoom?: number;
   basemap?: LabBasemap;
+  /**
+   * Lumière de la scène 3D.
+   *
+   * Ne sert qu'aux labs qui portent des volumes : sans extrusion, une lumière
+   * n'éclaire rien. Elle décide de quel côté tombent les ombres des façades, et
+   * donc de la lisibilité du relief bâti — une lumière verticale aplatit tout.
+   *
+   * `color` et `intensity` se lisent ensemble : une lumière crème peu intense
+   * donne un plein jour calme, une lumière orangée un soleil bas.
+   */
+  light?: {
+    /** Teinte de la lumière, ex. `"#fff9e8"`. */
+    color?: string;
+    /** De 0 à 1. Au-delà de 0,5 les façades claires se brûlent. */
+    intensity?: number;
+    /**
+     * `[rayon, azimut, élévation]` — azimut en degrés depuis le nord, élévation
+     * en degrés au-dessus de l'horizon. `[1.5, 210, 35]` donne un soleil de
+     * sud-ouest à mi-hauteur : les façades nord-est passent dans l'ombre, ce
+     * qui fait ressortir les volumes.
+     */
+    position?: [number, number, number];
+  };
   /** Légende affichée sous la carte. Sans elle, les couleurs ne disent rien. */
   legend?: Array<{ color: string; label: Bilingual }>;
   /**

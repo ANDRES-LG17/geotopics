@@ -1,6 +1,7 @@
 import type { LabDefinition } from "./types";
 import demoIsochrones from "./demo-isochrones";
 import lacSaintCharles from "./lac-saint-charles";
+import tramwayQuebec from "./tramway-quebec";
 
 /**
  * Registre des labs — les cartes interactives que le carnet sait afficher.
@@ -22,6 +23,7 @@ import lacSaintCharles from "./lac-saint-charles";
 export const LABS = {
   "demo-isochrones": demoIsochrones,
   "lac-saint-charles": lacSaintCharles,
+  "tramway-quebec": tramwayQuebec,
 } as const satisfies Record<string, LabDefinition>;
 
 export type LabId = keyof typeof LABS;
