@@ -374,7 +374,29 @@ consulter doit rester entière.
 
 **Disposition** — deux colonnes au-delà de 1024 px, le panneau à 20 rem. En
 dessous, il passe SOUS la carte : à cette largeur, deux colonnes donnent deux
-bandes trop étroites pour l'une comme pour l'autre.
+bandes trop étroites pour l'une comme pour l'autre. Une hauteur maximale lui est
+alors imposée, sinon une liste un peu longue pousserait la carte hors de
+l'écran — et c'est leur coexistence qui fait le propos.
+
+### Le panneau s'ouvrait sans ses chiffres
+
+**Constaté au test** — après un clic, le panneau affichait son titre et son
+curseur, mais aucune valeur. Les chiffres n'apparaissaient qu'au **premier
+mouvement du curseur**.
+
+**La cause** — `querySourceFeatures` était appelée juste après `setFilter`, dans
+le même tour. MapLibre n'avait pas encore retraité ses tuiles avec le nouveau
+filtre : la requête renvoyait zéro entité. Bouger le curseur déclenchait un
+second passage, et là les tuiles étaient prêtes.
+
+**Correction** — relire une fois tout de suite (pour le cas où les tuiles sont
+déjà à jour) puis une seconde fois sur l'évènement `idle`, qui signale que la
+carte a fini de redessiner.
+
+**Ce que ça coûtait si on ne le voyait pas** — un lecteur clique, lit un panneau
+vide, et conclut que le lab ne fonctionne pas. Le défaut ne se voit qu'en
+testant le clic **sans toucher à rien d'autre** : toute vérification qui bouge
+le curseur le masque.
 
 ---
 

@@ -362,29 +362,44 @@ export default function LabMap({
         map.setFilter(id, conditions as never);
       }
 
-      // Relire les chiffres du palier courant parmi les entités dessinées.
-      //
-      // `querySourceFeatures` interroge les tuiles chargées, pas l'écran : une
-      // aire reste trouvable même si le lecteur a fait glisser la carte à côté.
-      // Elle ne trouve rien, en revanche, pour un palier dont aucune tuile
-      // n'est chargée — on garde alors les chiffres précédents plutôt que
-      // d'effacer le panneau, ce qui clignoterait à chaque mouvement.
       if (!choisi) {
         setDonneesPanneau(null);
         return;
       }
-      for (const index of select.revealLayers ?? []) {
-        const id = `lab-layer-${index}`;
-        const couche = map.getLayer(id);
-        if (!couche) continue;
-        const trouve = map.querySourceFeatures(couche.source as string, {
-          filter: map.getFilter(id) as never,
-        });
-        if (trouve.length) {
-          setDonneesPanneau(trouve[0].properties ?? null);
-          return;
+
+      /**
+       * Relire les chiffres du palier courant parmi les entités de la source.
+       *
+       * APRÈS que la carte a fini de redessiner, et c'est tout l'objet du
+       * `idle`. Interroger juste après `setFilter` renvoyait zéro entité :
+       * MapLibre n'avait pas encore retraité ses tuiles. Le panneau s'ouvrait
+       * donc avec son titre et son curseur, mais sans aucun chiffre — ils
+       * n'apparaissaient qu'au premier mouvement du curseur, qui déclenchait un
+       * second passage.
+       *
+       * `querySourceFeatures` interroge les tuiles chargées et non l'écran :
+       * une aire reste trouvable même si le lecteur a fait glisser la carte à
+       * côté.
+       */
+      const relire = () => {
+        for (const index of select.revealLayers ?? []) {
+          const id = `lab-layer-${index}`;
+          const couche = map.getLayer(id);
+          if (!couche) continue;
+          const trouve = map.querySourceFeatures(couche.source as string, {
+            filter: map.getFilter(id) as never,
+          });
+          if (trouve.length) {
+            setDonneesPanneau(trouve[0].properties ?? null);
+            return;
+          }
         }
-      }
+        // Rien trouvé : on garde les chiffres précédents plutôt que de vider le
+        // panneau, qui clignoterait à chaque mouvement de carte.
+      };
+
+      relire();
+      map.once("idle", relire);
     };
 
     // Les couches n'existent qu'une fois le style chargé : au premier rendu,

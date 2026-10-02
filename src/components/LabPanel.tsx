@@ -57,7 +57,11 @@ export default function LabPanel({
 
   return (
     <aside
-      className="flex flex-col overflow-y-auto rounded-xl border border-line bg-surface-muted p-4 lg:max-h-full"
+      // Sous 1024 px le panneau est SOUS la carte : il faut alors lui donner une
+      // hauteur maximale, sinon une liste longue le pousserait hors de l'écran
+      // et le lecteur ne verrait plus la carte en même temps que ses chiffres —
+      // or c'est leur coexistence qui fait le propos.
+      className="flex max-h-[14rem] flex-col overflow-y-auto rounded-xl border border-line bg-surface-muted p-4 lg:max-h-full"
       role="complementary"
       aria-label={lang === "fr" ? "Détail de la sélection" : "Selection detail"}
       aria-live="polite"
