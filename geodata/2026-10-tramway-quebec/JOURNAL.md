@@ -343,6 +343,39 @@ après chaque changement de palier. Si une tuile n'est pas chargée, la lecture 
 trouve rien : on garde alors les chiffres précédents plutôt que de vider le
 panneau, qui clignoterait à chaque mouvement.
 
+### Le panneau sort de la carte
+
+**Fait** — le panneau de sélection, d'abord posé en surimpression sur la carte,
+est déplacé à côté d'elle. `LabPanel` devient un composant à part, et `LabMap`
+remonte la sélection à son parent au lieu de la rendre lui-même.
+
+**Pourquoi** — un panneau posé sur la carte masque le territoire au moment
+précis où le lecteur veut le regarder. Pire : il masque surtout ce qui entoure
+l'entité choisie, c'est-à-dire ce qu'on vient d'ouvrir. Une carte qu'on vient
+consulter doit rester entière.
+
+**Ce que ça entraîne, et qui n'était pas évident :**
+
+1. **L'état remonte.** La sélection reste dans `LabMap` — c'est la carte qui
+   sait ce qui a été cliqué — mais le palier du curseur descend depuis le
+   parent, puisque le curseur vit désormais dehors.
+2. **La carte doit se redimensionner.** L'ouverture du panneau la rétrécit sans
+   que la fenêtre bouge, et MapLibre ne s'en aperçoit pas seul : le canevas
+   garderait son ancienne largeur et déformerait la projection. Un
+   `ResizeObserver` sur le conteneur règle cela.
+3. **Le panneau garde sa place même vide.** Sinon la carte changerait de largeur
+   à chaque clic, MapLibre redessinerait tout, et le lecteur verrait la carte
+   sauter sous ses yeux au moment où il vient d'y choisir quelque chose. D'où le
+   champ `empty` du vocabulaire : cette place vide doit dire ce qu'on attend.
+4. **Trois pages à mettre à jour, pas une.** `LabEmbed` (l'entrée) et
+   `LabPreview` (la prévisualisation) montent la carte séparément. La
+   prévisualisation avait été oubliée au premier essai — et c'est précisément la
+   page où l'on vérifie une mise en page avant de la publier.
+
+**Disposition** — deux colonnes au-delà de 1024 px, le panneau à 20 rem. En
+dessous, il passe SOUS la carte : à cette largeur, deux colonnes donnent deux
+bandes trop étroites pour l'une comme pour l'autre.
+
 ---
 
 ## Décisions structurantes

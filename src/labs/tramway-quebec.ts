@@ -389,6 +389,10 @@ const tramwayQuebec: LabDefinition = {
     layers: [6],
     key: "station",
     title: "nom",
+    empty: {
+      fr: "Choisissez une station pour voir ce qu'on en atteint à pied.",
+      en: "Pick a station to see what it reaches on foot.",
+    },
     // Indices 0 et 1 : l'aplat de l'aire de marche et son contour.
     revealLayers: [0, 1],
     slider: {

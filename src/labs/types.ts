@@ -420,6 +420,15 @@ export type LabDefinition = {
     /** Lignes du panneau, mêmes règles que celles de `hover`. */
     rows: LabHoverRow[];
     /**
+     * Phrase affichée dans le panneau tant que rien n'est choisi.
+     *
+     * Le panneau garde sa place dès l'ouverture — sans quoi la carte changerait
+     * de largeur à chaque clic. Cette place vide doit dire ce qu'on attend du
+     * lecteur : rien d'autre dans la page ne lui apprend que ces points
+     * répondent.
+     */
+    empty?: Bilingual;
+    /**
      * Couches qui ne se dessinent que pour l'entité choisie.
      *
      * Elles restent vides tant que rien n'est sélectionné : c'est ce qui évite

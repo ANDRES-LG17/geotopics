@@ -1,8 +1,16 @@
 "use client";
 
-import { Component, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import dynamic from "next/dynamic";
 import { getLab, type LabId } from "@/labs";
+import LabPanel from "./LabPanel";
 
 /**
  * Mesure ce qui, sur cette page, peut empêcher une carte d'apparaître sans rien
@@ -97,6 +105,38 @@ export default function LabPreview({
   const zone = useRef<HTMLDivElement>(null);
   const diagnostic = useDiagnostic(zone);
 
+  // La prévisualisation doit montrer le lab tel qu'il sera lu, panneau compris :
+  // c'est ici qu'on vérifie une mise en page avant de la publier.
+  const [choisi, setChoisi] = useState<Record<string, unknown> | null>(null);
+  const [donnees, setDonnees] = useState<Record<string, unknown> | null>(null);
+  const [palier, setPalier] = useState<number | null>(
+    lab.select?.slider?.start ??
+      lab.select?.slider?.steps[lab.select.slider.steps.length - 1] ??
+      null,
+  );
+  const recevoirSelection = useCallback(
+    (
+      entite: Record<string, unknown> | null,
+      valeurs: Record<string, unknown> | null,
+    ) => {
+      setChoisi(entite);
+      setDonnees(valeurs);
+    },
+    [],
+  );
+
+  const carte = (
+    <LabMap
+      fill
+      lab={lab}
+      label={lab.id}
+      errorLabel="Données introuvables — vérifier le chemin dans la définition du lab."
+      locale={locale}
+      onSelection={lab.select ? recevoirSelection : undefined}
+      palierExterne={palier}
+    />
+  );
+
   return (
     <main className="flex min-h-dvh flex-col gap-4 bg-surface p-4 sm:p-6">
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -122,13 +162,24 @@ export default function LabPreview({
       */}
       <div ref={zone} className="h-[calc(100dvh-11rem)] min-h-[320px]">
         <ErrorBox>
-          <LabMap
-            fill
-            lab={lab}
-            label={lab.id}
-            errorLabel="Données introuvables — vérifier le chemin dans la définition du lab."
-            locale={locale}
-          />
+          {lab.select ? (
+            <div className="grid h-full min-h-0 grid-rows-[1fr_auto] gap-3 lg:grid-cols-[1fr_20rem] lg:grid-rows-1">
+              <div className="relative min-h-0">{carte}</div>
+              <LabPanel
+                titre={choisi ? String(choisi[lab.select.title] ?? "") : ""}
+                lignes={lab.select.rows}
+                donnees={donnees ?? choisi ?? {}}
+                curseur={lab.select.slider}
+                palier={palier}
+                onPalier={setPalier}
+                onFermer={() => setChoisi(null)}
+                lang={locale}
+                vide={lab.select.empty}
+              />
+            </div>
+          ) : (
+            carte
+          )}
         </ErrorBox>
       </div>
 

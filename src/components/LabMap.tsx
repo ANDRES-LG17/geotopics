@@ -206,6 +206,8 @@ export default function LabMap({
   errorLabel,
   locale,
   fill = false,
+  onSelection,
+  palierExterne,
 }: {
   lab: LabDefinition;
   /** Nom du lab pour les lecteurs d'écran — le titre de l'entrée. */
@@ -213,6 +215,19 @@ export default function LabMap({
   errorLabel: string;
   /** Langue courante, pour les libellés de scènes. */
   locale?: string;
+  /**
+   * Remonte l'entité choisie et ses chiffres au palier courant.
+   *
+   * Le panneau vit HORS de la carte — une carte qu'on vient regarder ne doit
+   * pas être couverte par ce qu'on y lit. L'état de sélection, lui, reste ici :
+   * c'est la carte qui sait ce qui a été cliqué.
+   */
+  onSelection?: (
+    choisi: Record<string, unknown> | null,
+    donnees: Record<string, unknown> | null,
+  ) => void;
+  /** Palier imposé par le curseur du panneau, qui vit à l'extérieur. */
+  palierExterne?: number | null;
   /**
    * La carte occupe toute la hauteur de son conteneur, qui décide donc de sa
    * taille. C'est le cas dans une entrée comme en prévisualisation : la
@@ -243,16 +258,18 @@ export default function LabMap({
    * pour qu'un panneau soit lisible et qu'un curseur serve à quelque chose.
    */
   const [choisi, setChoisi] = useState<Record<string, unknown> | null>(null);
-  const [palier, setPalier] = useState<number | null>(null);
   const scenes = lab.scenes ?? [];
   const lang: "fr" | "en" = locale === "en" ? "en" : "fr";
 
   const curseur = lab.select?.slider;
-  // Le palier courant : celui qu'a posé le lecteur, sinon celui d'ouverture,
-  // sinon le dernier — montrer l'aire complète d'emblée vaut mieux que de
-  // l'exiger d'un geste que rien n'annonce.
+  // Le palier courant : celui que pose le curseur du panneau, sinon celui
+  // d'ouverture, sinon le dernier — montrer l'aire complète d'emblée vaut mieux
+  // que de l'exiger d'un geste que rien n'annonce.
   const palierCourant =
-    palier ?? curseur?.start ?? curseur?.steps[curseur.steps.length - 1] ?? null;
+    palierExterne ??
+    curseur?.start ??
+    curseur?.steps[curseur.steps.length - 1] ??
+    null;
 
   /**
    * Les chiffres affichés au palier courant.
@@ -375,6 +392,26 @@ export default function LabMap({
     if (map.isStyleLoaded()) appliquer();
     else map.once("idle", appliquer);
   }, [choisi, palierCourant, lab.select, lab.sources]);
+
+  // Remonter la sélection au parent, qui rend le panneau à côté de la carte.
+  useEffect(() => {
+    onSelection?.(choisi, donneesPanneau);
+  }, [choisi, donneesPanneau, onSelection]);
+
+  /**
+   * La carte suit la taille de son conteneur.
+   *
+   * Nécessaire depuis que le panneau vit à l'extérieur : son ouverture rétrécit
+   * la carte sans que la fenêtre bouge, et MapLibre ne s'en aperçoit pas seul —
+   * le canevas garderait son ancienne largeur, déformant la projection.
+   */
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === "undefined") return;
+    const observateur = new ResizeObserver(() => mapRef.current?.resize());
+    observateur.observe(container);
+    return () => observateur.disconnect();
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -901,120 +938,6 @@ export default function LabMap({
           pleinEcran || fill ? "min-h-0 flex-1" : "h-[420px] sm:h-[520px]"
         }`}
       />
-
-      {/*
-        Panneau de la station choisie.
-
-        En surimpression sur la carte plutôt qu'à côté : la carte garde toute sa
-        largeur quand rien n'est choisi, et le panneau n'existe que lorsqu'il a
-        quelque chose à dire. Sur téléphone il se pose en bas, où le pouce
-        l'atteint ; au-delà de 640 px il passe à gauche, du côté opposé aux
-        commandes de zoom.
-      */}
-      {lab.select && choisi && (
-        <div
-          className="absolute inset-x-2 bottom-2 z-20 max-h-[55%] overflow-y-auto rounded-xl border border-line bg-surface/95 p-4 shadow-lg backdrop-blur-sm sm:inset-x-auto sm:bottom-auto sm:left-3 sm:top-3 sm:max-h-[calc(100%-1.5rem)] sm:w-72"
-          role="complementary"
-          aria-label={
-            lang === "fr" ? "Station sélectionnée" : "Selected station"
-          }
-        >
-          <div className="flex items-start justify-between gap-3">
-            <p className="text-base font-semibold leading-tight text-fg">
-              {String(choisi[lab.select.title] ?? "")}
-            </p>
-            <button
-              type="button"
-              onClick={() => setChoisi(null)}
-              className="-mr-1 -mt-1 shrink-0 rounded-lg p-1 text-fg-muted transition-colors hover:text-fg"
-              title={lang === "fr" ? "Fermer" : "Close"}
-            >
-              <span className="sr-only">
-                {lang === "fr" ? "Fermer" : "Close"}
-              </span>
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/*
-            Le curseur de durée. Un `input range` natif plutôt qu'un dessin
-            maison : il se pilote au clavier, annonce sa valeur aux lecteurs
-            d'écran, et se saisit au doigt sans qu'on ait à y penser.
-
-            Les paliers sont discrets — le curseur passe de l'un à l'autre, car
-            les formes intermédiaires n'existent pas. C'est assumé : six paliers
-            suffisent à ce que le mouvement paraisse continu.
-          */}
-          {curseur && palierCourant !== null && (
-            <div className="mt-4">
-              <div className="flex items-baseline justify-between">
-                <label
-                  htmlFor="lab-curseur"
-                  className="text-xs uppercase tracking-wide text-fg-muted"
-                >
-                  {curseur.label[lang]}
-                </label>
-                <span className="text-sm font-semibold tabular-nums text-fg">
-                  {palierCourant}
-                  {curseur.suffix ?? ""}
-                </span>
-              </div>
-              <input
-                id="lab-curseur"
-                type="range"
-                min={0}
-                max={curseur.steps.length - 1}
-                step={1}
-                value={Math.max(0, curseur.steps.indexOf(palierCourant))}
-                onChange={(e) =>
-                  setPalier(curseur.steps[Number(e.target.value)])
-                }
-                className="mt-2 w-full accent-[var(--accent,#c2410c)]"
-                aria-valuetext={`${palierCourant}${curseur.suffix ?? ""}`}
-              />
-              <div className="flex justify-between text-[11px] tabular-nums text-fg-muted">
-                <span>{curseur.steps[0]}</span>
-                <span>{curseur.steps[curseur.steps.length - 1]}</span>
-              </div>
-            </div>
-          )}
-
-          {/*
-            Les lignes du panneau. Elles lisent les propriétés de l'entité
-            révélée au palier courant quand il y en a une — sinon celles de
-            l'entité cliquée.
-          */}
-          <dl className="mt-4 space-y-2">
-            {lab.select.rows.map((row, i) => {
-              const valeur = (donneesPanneau ?? choisi)[row.field];
-              if (valeur === undefined || valeur === null || valeur === "") {
-                return null;
-              }
-              return (
-                <div key={i} className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-fg-muted">
-                    {row.label?.[lang] ?? row.field}
-                  </dt>
-                  <dd className="text-sm font-medium tabular-nums text-fg">
-                    {String(valeur)}
-                    {row.suffix ?? ""}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        </div>
-      )}
 
       {/*
         Plein écran. Placé dans le flux plutôt qu'en surimpression sur la
