@@ -185,6 +185,23 @@ function cameraFor(view: LabView, narrow: boolean) {
 }
 
 /**
+ * Une couleur hexadécimale rendue translucide.
+ *
+ * Sert aux dégradés animés, où la même teinte doit s'éteindre par degrés le
+ * long de la ligne. Une couleur non hexadécimale est renvoyée telle quelle :
+ * mieux vaut une traînée à bord net qu'une couche qui disparaît.
+ */
+function teinte(hex: string, alpha: number): string {
+  const n = hex.replace("#", "");
+  const court = n.length === 3;
+  const r = parseInt(court ? n[0] + n[0] : n.slice(0, 2), 16);
+  const v = parseInt(court ? n[1] + n[1] : n.slice(2, 4), 16);
+  const b = parseInt(court ? n[2] + n[2] : n.slice(4, 6), 16);
+  const a = Math.min(1, Math.max(0, alpha));
+  return `rgba(${r},${v},${b},${a.toFixed(3)})`;
+}
+
+/**
  * Options de `fitBounds`, avec le plancher de zoom d'une vue à emprise.
  *
  * `minZoom` dit à MapLibre de ne pas descendre en dessous d'un niveau, quitte à
@@ -466,11 +483,32 @@ export default function LabMap({
         if (!bornes.has(borne)) bornes.set(borne, couleur);
       };
 
-      poser(0, queue <= 0 ? couche.color : "rgba(0,0,0,0)");
-      if (queue > 0) poser(queue, "rgba(0,0,0,0)");
-      poser(tete, couche.color);
-      poser(Math.min(1, tete + 0.001), "rgba(0,0,0,0)");
-      poser(1, "rgba(0,0,0,0)");
+      /**
+       * La traînée s'éteint par degrés, et non d'un coup.
+       *
+       * Une première version passait de la couleur pleine au transparent en un
+       * millième de la ligne : la rame avait un bord net à l'avant comme à
+       * l'arrière, ce qui donnait un trait qui saute plutôt qu'un véhicule qui
+       * passe. Trois paliers intermédiaires suffisent à faire une comète —
+       * dense en tête, évanouie en queue.
+       */
+      const transparent = "rgba(0,0,0,0)";
+      const fondu = (p: number) =>
+        couche.color.startsWith("#")
+          ? teinte(couche.color, p)
+          : couche.color;
+
+      poser(0, queue <= 0 ? fondu(1 + queue / longueur) : transparent);
+      if (queue > 0) poser(queue, transparent);
+      // Le corps de la traînée, de la queue vers la tête.
+      for (const part of [0.35, 0.65, 0.85]) {
+        const p = queue + longueur * part;
+        if (p > 0) poser(p, fondu(part));
+      }
+      poser(tete, fondu(1));
+      // L'avant reste franc : c'est lui qui donne le sens de la marche.
+      poser(Math.min(1, tete + 0.004), transparent);
+      poser(1, transparent);
 
       const arrets = [...bornes.entries()].sort((a, b) => a[0] - b[0]);
       try {

@@ -605,6 +605,24 @@ par ses autres couches, rien ne manque à la lecture.
 parcourt. Une lueur qui la remonte le dit sans un mot, et donne au lecteur le
 **sens de la marche**, que rien d'autre sur la carte n'indique.
 
+**Deux réglages corrigés après l'avoir vue tourner :**
+
+*La vitesse — 14 s puis 38 s pour les 17,4 km.* Le défaut n'était pas la vitesse
+en soi, mais l'échelle : le lab s'ouvre sur un **quartier**, pas sur la ligne
+entière. À 14 s, la rame entrait et sortait du cadre avant qu'on ait pu la
+suivre. On n'imite pas un horaire — le trajet réel prendra une quarantaine de
+minutes — mais le mouvement doit rester lisible quand on regarde une station.
+
+*La traînée — un bord net devenu dégradé.* La première version passait de la
+couleur pleine au transparent en un **millième** de la ligne : la rame avait un
+bord franc devant comme derrière, et se lisait comme un segment qui saute plutôt
+que comme un véhicule qui passe. Trois paliers intermédiaires (35 %, 65 %, 85 %)
+en font une comète — dense en tête, évanouie en queue — et sa longueur passe de
+4 à 7 % de la ligne, soit environ 1,2 km. Une traînée courte file comme un
+éclair ; allongée, elle se lit.
+
+L'avant reste franc à dessein : c'est lui qui donne le sens de la marche.
+
 ---
 
 ## Décisions structurantes

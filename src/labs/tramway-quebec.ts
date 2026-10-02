@@ -241,13 +241,18 @@ const tramwayQuebec: LabDefinition = {
         16, 8,
         18, 12,
       ],
-      // 4 % de la ligne : à 17,4 km, une traînée d'environ 700 m. Assez longue
-      // pour se voir à l'échelle de la ville, assez courte pour qu'on lise un
-      // véhicule et non un flux.
-      length: 0.04,
-      // 14 secondes pour les 17,4 km. Un aller rapide — il s'agit de montrer un
-      // sens de parcours, pas de simuler un horaire.
-      duration: 14000,
+      // 7 % de la ligne : à 17,4 km, une traînée d'environ 1,2 km. Une traînée
+      // courte file comme un éclair ; allongée, elle se lit comme un véhicule
+      // qui passe.
+      length: 0.07,
+      // 38 secondes pour les 17,4 km.
+      //
+      // Un premier réglage à 14 s traversait la ville trop vite : à l'échelle
+      // d'un quartier — celle où le lab s'ouvre — la rame apparaissait et
+      // disparaissait avant qu'on ait eu le temps de la suivre. Le trajet réel
+      // prendra une quarantaine de minutes ; on n'imite pas un horaire, mais le
+      // mouvement doit rester lisible quand on regarde une station.
+      duration: 38000,
     },
 
     // 6 — Les stations, au-dessus de tout : c'est ce qu'on vient chercher.
