@@ -452,7 +452,13 @@ export type LabDefinition = {
       field: string;
       /** Paliers disponibles, dans l'ordre. Doivent exister dans les données. */
       steps: number[];
-      /** Palier affiché à l'ouverture. Absent = le dernier. */
+      /**
+       * Palier affiché à l'ouverture. Absent = le dernier.
+       *
+       * Un palier bas laisse le lecteur faire grandir la forme lui-même et voir
+       * la croissance ; un palier haut lui donne le résultat d'emblée. Le choix
+       * dépend de ce que le lab veut faire comprendre.
+       */
       start?: number;
       /** Libellé du curseur, ex. « Durée de marche ». */
       label: Bilingual;

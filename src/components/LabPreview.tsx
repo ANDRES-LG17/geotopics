@@ -138,29 +138,31 @@ export default function LabPreview({
   );
 
   return (
-    <main className="flex min-h-dvh flex-col gap-4 bg-surface p-4 sm:p-6">
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h1 className="font-mono text-sm text-fg">{lab.id}</h1>
-        <p className="font-mono text-xs text-fg-subtle">
-          {diagnostic ? `${diagnostic} · ` : ""}
-          {locale}
-          {" · "}
-          <a
-            href={`/lab-preview/${lab.id}?locale=${locale === "fr" ? "en" : "fr"}`}
-            className="underline underline-offset-2"
-          >
-            {locale === "fr" ? "en" : "fr"}
-          </a>
-        </p>
-      </header>
-
+    <main className="flex h-dvh flex-col bg-surface p-2 sm:p-3">
       {/*
-        Hauteur explicite plutôt qu'une chaîne `flex-1` + `h-full` : un
-        pourcentage de hauteur ne se résout que si le parent a une hauteur
-        définie, et la chaîne peut s'effondrer à zéro sans rien signaler. Ici la
-        valeur est calculée une fois, à partir de la fenêtre.
+        Le relevé de diagnostic — taille du conteneur, WebGL, langue — est posé
+        en surimpression, en haut à droite, plutôt qu'en bandeau au-dessus de la
+        carte.
+
+        POURQUOI — cette page sert à juger du rendu, et un bandeau qui prend
+        trois lignes de haut fausse ce jugement : on regarde une carte plus
+        courte que celle qu'on publiera. Le relevé reste là, discret, pour les
+        deux pannes qu'il seul sait nommer — un conteneur de hauteur nulle et un
+        WebGL absent, qui échouent tous deux en silence.
       */}
-      <div ref={zone} className="h-[calc(100dvh-11rem)] min-h-[320px]">
+      <p className="pointer-events-none absolute right-3 top-2 z-30 font-mono text-[10px] text-fg-subtle/60">
+        {lab.id}
+        {diagnostic ? ` · ${diagnostic}` : ""}
+        {" · "}
+        <a
+          href={`/lab-preview/${lab.id}?locale=${locale === "fr" ? "en" : "fr"}`}
+          className="pointer-events-auto underline underline-offset-2"
+        >
+          {locale === "fr" ? "en" : "fr"}
+        </a>
+      </p>
+
+      <div ref={zone} className="min-h-0 flex-1">
         <ErrorBox>
           {lab.select ? (
             <div className="grid h-full min-h-0 grid-rows-[1fr_auto] gap-3 lg:grid-cols-[1fr_20rem] lg:grid-rows-1">
@@ -175,6 +177,8 @@ export default function LabPreview({
                 onFermer={() => setChoisi(null)}
                 lang={locale}
                 vide={lab.select.empty}
+                legende={lab.legend}
+                attribution={lab.attribution}
               />
             </div>
           ) : (
@@ -183,23 +187,6 @@ export default function LabPreview({
         </ErrorBox>
       </div>
 
-      <footer className="space-y-2 text-xs text-fg-subtle">
-        {lab.legend && (
-          <ul className="flex flex-wrap gap-x-4 gap-y-1">
-            {lab.legend.map((item) => (
-              <li key={item.label.en} className="flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="h-2.5 w-2.5 shrink-0 rounded-sm border border-line"
-                  style={{ backgroundColor: item.color }}
-                />
-                {item.label[locale]}
-              </li>
-            ))}
-          </ul>
-        )}
-        <p>{lab.attribution[locale]}</p>
-      </footer>
     </main>
   );
 }

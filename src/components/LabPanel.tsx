@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Bilingual, LabHoverRow } from "@/labs/types";
 
 /**
@@ -30,6 +31,8 @@ export default function LabPanel({
   onFermer,
   lang,
   vide,
+  legende,
+  attribution,
 }: {
   /** Nom de l'entité choisie, en tête du panneau. */
   titre: string;
@@ -37,6 +40,7 @@ export default function LabPanel({
   donnees: DonneesPanneau;
   curseur?: {
     steps: number[];
+    start?: number;
     label: Bilingual;
     suffix?: string;
   };
@@ -52,8 +56,44 @@ export default function LabPanel({
    * fois.
    */
   vide?: Bilingual;
+  /**
+   * Légende et provenance, posées au pied du panneau.
+   *
+   * Elles vivaient sous la carte, où elles lui prenaient trois lignes de
+   * hauteur. Ici elles ne coûtent rien : le panneau a de la place en bas, et
+   * c'est de toute façon le lieu où l'on lit ce que la carte montre.
+   *
+   * L'attribution n'est pas facultative — la plupart des licences de données
+   * ouvertes l'exigent, ODbL comprise.
+   */
+  legende?: Array<{ color: string; label: Bilingual }>;
+  attribution?: Bilingual;
 }) {
   const ouvert = Boolean(titre);
+
+  /**
+   * Changer de station remet le curseur à son palier d'ouverture.
+   *
+   * Sans cela, une station choisie après qu'on a descendu le curseur à trois
+   * minutes s'ouvrirait elle aussi à trois — et le lecteur verrait une aire
+   * minuscule sans comprendre pourquoi. Chaque station s'ouvre sur son résultat
+   * complet.
+   */
+  const dernierTitre = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ouvert) {
+      dernierTitre.current = null;
+      return;
+    }
+    if (titre === dernierTitre.current) return;
+    dernierTitre.current = titre;
+
+    const arrivee = curseur?.start ?? curseur?.steps[curseur.steps.length - 1];
+    if (arrivee !== undefined && arrivee !== palier) onPalier(arrivee);
+    // `onPalier` et `palier` changent à chaque mouvement du curseur ; les
+    // inclure ramènerait le lecteur au palier d'ouverture sous ses doigts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titre, ouvert, curseur]);
 
   return (
     <aside
@@ -150,6 +190,22 @@ export default function LabPanel({
 
           <dl className="mt-5 space-y-2.5">
             {lignes.map((row, i) => {
+              // Au palier zéro, aucune aire n'existe : les lignes gardent leur
+              // place avec un tiret plutôt que de disparaître, sinon le panneau
+              // se replierait et se déplierait au fil du curseur.
+              if (palier === 0) {
+                return (
+                  <div
+                    key={i}
+                    className="flex items-baseline justify-between gap-3 border-b border-line/60 pb-2 last:border-0"
+                  >
+                    <dt className="text-xs leading-snug text-fg-muted">
+                      {row.label?.[lang] ?? row.field}
+                    </dt>
+                    <dd className="shrink-0 text-sm text-fg-subtle">—</dd>
+                  </div>
+                );
+              }
               const valeur = donnees[row.field];
               if (valeur === undefined || valeur === null || valeur === "") {
                 return null;
@@ -177,6 +233,34 @@ export default function LabPanel({
             })}
           </dl>
         </>
+      )}
+
+      {/*
+        Légende et provenance, poussées en bas du panneau par `mt-auto`. Elles
+        restent visibles qu'une station soit choisie ou non : une carte sans
+        légende ne dit rien de ses couleurs, et une carte sans source citée n'a
+        aucune valeur — la plupart des licences l'exigent par ailleurs.
+      */}
+      {(legende?.length || attribution) && (
+        <div className="mt-auto space-y-2 pt-5 text-[11px] leading-snug text-fg-subtle">
+          {legende?.length ? (
+            <ul className="space-y-1.5">
+              {legende.map((item) => (
+                <li key={item.label.en} className="flex items-start gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[3px] h-2.5 w-2.5 shrink-0 rounded-sm border border-line"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span>{item.label[lang]}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {attribution && (
+            <p className="border-t border-line/60 pt-2">{attribution[lang]}</p>
+          )}
+        </div>
       )}
     </aside>
   );

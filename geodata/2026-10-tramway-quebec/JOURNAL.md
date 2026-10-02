@@ -398,6 +398,85 @@ vide, et conclut que le lab ne fonctionne pas. Le défaut ne se voit qu'en
 testant le clic **sans toucher à rien d'autre** : toute vérification qui bouge
 le curseur le masque.
 
+### La vitesse de marche : 4,2 km/h et non 4,8
+
+**Décidé** — la portée de 15 minutes passe de **1 200 m à 1 050 m**.
+
+**Pourquoi** — 4,8 km/h est la valeur usuelle des études de transport, et celle
+qu'emploie `tramquebec.00h11.ca`. Elle décrit un adulte valide marchant d'un bon
+pas sur un **trottoir plat et sec**.
+
+Ce n'est pas Québec. La ville monte — le tracé franchit une falaise — et la
+neige couvre les trottoirs quatre mois par an quand elle n'en fait pas des
+corridors d'un mètre. Une aire calculée à 4,8 km/h décrit une ville qui existe
+de mai à octobre.
+
+**Ce que ça change, mesuré :**
+
+| | 4,8 km/h | 4,2 km/h | écart |
+| --- | --- | --- | --- |
+| Portée à 15 min | 1 200 m | **1 050 m** | −12,5 % |
+| Saint-Roch, surface | 308,8 ha | **234,5 ha** | −24 % |
+| Saint-Roch, habitants | 23 146 | **18 456** | **−20 %** |
+| Jean-Paul-L'Allier, habitants | 23 018 | **18 923** | −18 % |
+| Poids projeté, 29 stations | 666 ko | **525 ko** | −21 % |
+
+**Près de cinq mille personnes de différence sur une seule station**, pour un
+paramètre qu'on ne voit jamais discuté. C'est la leçon à retenir : dans ce genre
+de calcul, l'hypothèse de vitesse pèse plus lourd que le raffinement de la
+méthode.
+
+**Le prix, assumé et écrit dans les métadonnées** — les chiffres ne se comparent
+plus directement à ceux des études qui retiennent 4,8 km/h. La note donne le
+facteur : une surface varie comme le carré de la portée.
+
+### Le curseur part de zéro
+
+**Fait** — le palier 0 est ajouté aux crans, et le curseur s'ouvre dessus : au
+clic, la station est marquée mais aucune aire n'est dessinée. C'est le lecteur
+qui la fait grandir.
+
+**Pourquoi** — la croissance dit quelque chose que la forme finale tait :
+l'aire s'étire d'abord le long de quelques axes, puis remplit les quartiers, et
+c'est au bout du parcours que les coupures mordent. Le lecteur qui pousse le
+curseur le voit arriver.
+
+**Le risque assumé** — qui ne touche pas au curseur ne voit rien. C'est le prix
+de montrer la croissance plutôt que le résultat, et il est accepté en
+connaissance de cause.
+
+**Un déroulé automatique a été écrit puis retiré.** L'aire grandissait seule de
+0 à 15 en un peu plus d'une seconde. Deux raisons de l'abandonner : le lecteur
+n'a pas la main sur ce qu'il regarde, et une carte qui bouge toute seule à
+l'ouverture fatigue plus qu'elle n'explique.
+
+**Deux garde-fous conservés :**
+
+- aucune forme n'est calculée pour le palier 0 — il n'y a rien à atteindre en
+  zéro minute. Le panneau affiche alors des tirets **en gardant ses lignes** :
+  sans cela il se replierait et se déplierait au fil du curseur ;
+- changer de station ramène le curseur à son palier d'ouverture. Sans cela, une
+  station choisie après qu'on a descendu le curseur s'ouvrirait elle aussi en
+  bas, et le lecteur verrait une aire minuscule sans comprendre pourquoi.
+
+### La prévisualisation passe en plein écran
+
+**Fait** — le bandeau de diagnostic et le pied de page disparaissent ; la carte
+prend toute la fenêtre.
+
+**Pourquoi** — cette page sert à juger du rendu. Un bandeau de trois lignes et
+un pied de page en prenaient quatre : on jugeait une carte plus courte que celle
+qu'on publierait.
+
+Le relevé de diagnostic reste, en surimpression discrète en haut à droite. Il
+nomme les deux pannes qui échouent en silence — conteneur de hauteur nulle,
+WebGL absent — et sans lui elles se ressemblent toutes les deux.
+
+**Légende et provenance** descendent au pied du panneau. Elles y sont mieux
+qu'en bandeau : le panneau a de la place en bas, et c'est de toute façon là
+qu'on lit ce que la carte montre. L'attribution n'est pas facultative — ODbL
+l'exige.
+
 ---
 
 ## Décisions structurantes

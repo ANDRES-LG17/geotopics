@@ -126,6 +126,11 @@ export default function LabEmbed({
             onFermer={() => setChoisi(null)}
             lang={locale === "en" ? "en" : "fr"}
             vide={lab.select.empty}
+            // En mode plein, la légende et la source n'ont pas d'autre place :
+            // le panneau les porte. Dans une entrée, elles restent sous la
+            // carte avec la note de méthode, où le texte les entoure.
+            legende={plein ? lab.legend : undefined}
+            attribution={plein ? lab.attribution : undefined}
           />
         </div>
       ) : (
@@ -139,9 +144,13 @@ export default function LabEmbed({
         téléchargement reviendront avec l'article.
       */}
       {plein ? (
-        <figcaption className="mt-2 shrink-0 text-[11px] leading-snug text-fg-subtle">
-          {t("labSource")} {lab.attribution[locale]}
-        </figcaption>
+        // Avec un panneau, la source est déjà à son pied : la répéter ici
+        // prendrait de la hauteur à la carte pour redire la même chose.
+        lab.select ? null : (
+          <figcaption className="mt-2 shrink-0 text-[11px] leading-snug text-fg-subtle">
+            {t("labSource")} {lab.attribution[locale]}
+          </figcaption>
+        )
       ) : (
       <figcaption className="mt-4 space-y-3 text-sm">
         {lab.legend && (

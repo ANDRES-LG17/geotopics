@@ -43,11 +43,22 @@ ATELIER = os.path.join(RACINE, "geodata", "2026-10-tramway-quebec")
 
 # --- paramètres de méthode -------------------------------------------------
 
-#: Vitesse de marche, en km/h. 4,8 est la valeur usuelle des études de
-#: transport, et celle qu'emploie tramquebec.00h11.ca — la garder rend les
-#: résultats comparables. Elle ne tient compte ni de la neige, ni de la pente :
-#: à dire dans la note du lab.
-VITESSE_KMH = 4.8
+#: Vitesse de marche retenue, en km/h.
+#:
+#: 4,2 PLUTÔT QUE 4,8. La valeur usuelle des études de transport est 4,8 km/h,
+#: et c'est celle qu'emploie tramquebec.00h11.ca. Elle décrit un adulte valide
+#: marchant d'un bon pas sur un trottoir plat et sec.
+#:
+#: Ce n'est pas Québec. La ville monte — le tracé franchit une falaise — et la
+#: neige couvre les trottoirs quatre mois par an, quand elle n'en fait pas des
+#: corridors d'un mètre. Une aire de marche calculée à 4,8 km/h décrit donc une
+#: ville qui existe de mai à octobre.
+#:
+#: 4,2 km/h ramène la portée de 1 200 à 1 050 m, soit environ 15 % de surface
+#: en moins. Le prix est réel : les chiffres ne se comparent plus directement à
+#: ceux des études qui retiennent 4,8. À dire dans la note, avec le facteur de
+#: conversion — une surface varie comme le carré de la portée.
+VITESSE_KMH = 4.2
 
 #: Paliers de temps calculés, en minutes.
 #:
@@ -61,6 +72,10 @@ VITESSE_KMH = 4.8
 #: sont ensuite découpées dans ce même parcours. Ajouter un palier ne coûte donc
 #: que son polygone, pas un calcul de plus.
 PALIERS_MIN = [3, 5, 7, 10, 12, 15]
+
+#: Le curseur du lab descend jusqu'à 0, où il n'y a rien à montrer : aucune
+#: forme n'est donc calculée pour ce palier. C'est le lab qui gère ce cas, en
+#: n'affichant aucune aire et des valeurs en tirets.
 
 #: Distance franchie pour une durée, en mètres. 4,8 km/h × 15 min = 1 200 m.
 def portee_m(minutes):
@@ -367,10 +382,18 @@ def main():
                     f"seul axe. Pas d'enveloppe convexe : elle comblerait les "
                     f"découpes, qui sont l'information."
                 ),
+                "vitesse_kmh": VITESSE_KMH,
+                "portee_15min_m": round(portee_m(15)),
                 "limites": (
-                    "La vitesse ne tient compte ni de la pente ni de l'hiver "
-                    "québécois. Les escaliers sont franchis sans pénalité, ce "
-                    "qui rend la Haute-Ville un peu trop facile d'accès. La "
+                    f"Vitesse retenue : {VITESSE_KMH} km/h, soit "
+                    f"{round(portee_m(15))} m en 15 minutes. Les études de "
+                    "transport retiennent souvent 4,8 km/h (1 200 m) ; cette "
+                    "valeur décrit un trottoir plat et sec, ce que Québec n'est "
+                    "ni l'hiver ni sur la falaise. Les chiffres ne se comparent "
+                    "donc pas directement à ceux qui retiennent 4,8 — une "
+                    "surface varie comme le carré de la portée. Les escaliers "
+                    "sont franchis sans pénalité de pente, ce qui rend la "
+                    "Haute-Ville encore un peu trop facile d'accès. La "
                     "complétude des trottoirs dans OpenStreetMap varie selon "
                     "les secteurs. Les positions des stations sont saisies à "
                     "la main — voir le champ precision_m."

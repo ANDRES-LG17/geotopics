@@ -397,8 +397,19 @@ const tramwayQuebec: LabDefinition = {
     revealLayers: [0, 1],
     slider: {
       field: "minutes",
-      steps: [3, 5, 7, 10, 12, 15],
-      start: 15,
+      // Le 0 n'a aucune forme calculée — il n'y a rien à atteindre en zéro
+      // minute. Il existe pour que le curseur parte de l'origine : à
+      // l'ouverture, l'aire grandit de 0 à 15 sous les yeux du lecteur, ce qui
+      // montre d'un geste ce que la carte met à dire.
+      steps: [0, 3, 5, 7, 10, 12, 15],
+      // Le curseur part de zéro : la carte reste nue au clic, et c'est le
+      // lecteur qui fait grandir l'aire. Il voit alors la croissance au lieu de
+      // la deviner — la marche s'étire d'abord le long de quelques axes, puis
+      // remplit les quartiers.
+      //
+      // Aucune forme n'est calculée pour le palier 0 : il n'y a rien à
+      // atteindre en zéro minute. Le panneau affiche des tirets.
+      start: 0,
       label: { fr: "Durée de marche", en: "Walking time" },
       suffix: " min",
     },
@@ -461,8 +472,8 @@ const tramwayQuebec: LabDefinition = {
   },
 
   note: {
-    fr: "Tracé provisoire, reconstitué par les contributeurs d'OpenStreetMap d'après l'avis au marché du 19 décembre 2024 ; OSM le signale « sujet à modification ». Le vectoriel officiel n'est pas diffusé en données ouvertes. La géométrie relevée mesure 17,5 km, là où le projet en annonce 19 : un tronçon de l'ouest n'est pas raccordé et environ 700 m de tracé manquent dans OSM. Les 29 stations ne sont pas encore cartographiées — elles viendront dans une version suivante, avec la population desservie à 800 m. La pente de 12 % entre basse-ville et haute-ville, qui impose le tunnel, provient de la documentation du projet et non de cette géométrie.",
-    en: "Provisional route, reconstructed by OpenStreetMap contributors from the 19 December 2024 call for tenders; OSM flags it as \"subject to change\". No official vector file is published as open data. The surveyed geometry measures 17.5 km against the project's announced 19: one western segment is disconnected and roughly 700 m of route is missing from OSM. The 29 stations are not yet mapped — they will come in a later version, along with population within 800 m. The 12% grade between lower and upper town, which forces the tunnel, comes from project documentation rather than this geometry.",
+    fr: "Tracé provisoire, reconstitué par les contributeurs d'OpenStreetMap d'après l'avis au marché du 19 décembre 2024 ; OSM le signale « sujet à modification ». Le vectoriel officiel n'est pas diffusé en données ouvertes. La géométrie relevée mesure 17,5 km, là où le projet en annonce 19 : un tronçon de l'ouest n'est pas raccordé et environ 700 m de tracé manquent dans OSM. Les aires de marche sont calculées sur le réseau piéton réel — rues, trottoirs et escaliers — et non à vol d'oiseau : c'est pourquoi elles s'arrêtent devant la falaise, la rivière et l'autoroute. Vitesse retenue : 4,2 km/h, soit 1 050 m en quinze minutes. Les études de transport retiennent souvent 4,8 km/h (1 200 m), une valeur qui décrit un trottoir plat et sec ; les chiffres ne se comparent donc pas directement aux leurs. Les escaliers sont franchis sans pénalité de pente. La population vient du recensement de 2021, répartie au prorata de la surface des aires de diffusion recouvertes — c'est une estimation, pas un décompte. Deux stations seulement sont saisies à ce stade, et leurs positions sont approchées à 50-100 m près. La pente de 12 % entre basse-ville et haute-ville, qui impose le tunnel, provient de la documentation du projet et non de cette géométrie.",
+    en: "Provisional route, reconstructed by OpenStreetMap contributors from the 19 December 2024 call for tenders; OSM flags it as \"subject to change\". No official vector file is published as open data. The surveyed geometry measures 17.5 km against the project's announced 19: one western segment is disconnected and roughly 700 m of route is missing from OSM. Walksheds are computed on the real pedestrian network — streets, sidewalks and staircases — not as the crow flies, which is why they stop at the escarpment, the river and the expressway. Walking speed used: 4.2 km/h, or 1,050 m in fifteen minutes. Transport studies often use 4.8 km/h (1,200 m), a figure describing flat dry sidewalk; these numbers therefore do not compare directly with theirs. Staircases are climbed without a slope penalty. Population comes from the 2021 census, apportioned by the share of each dissemination area's surface covered — an estimate, not a count. Only two stations are entered at this stage, with positions accurate to within 50-100 m. The 12% grade between lower and upper town, which forces the tunnel, comes from project documentation rather than this geometry.",
   },
 
   download: "/data/tramway-quebec-v1.geojson",
