@@ -121,6 +121,50 @@ export type LabLayer = LabLayerBase &
        */
       cap?: "butt" | "round" | "square";
       join?: "bevel" | "round" | "miter";
+      /**
+       * Largeur du trou central, en pixels — le « casing » des cartes de
+       * transport.
+       *
+       * La ligne se dessine alors comme deux bords de part et d'autre d'un
+       * vide. Posée sous une ligne pleine plus fine, elle lui fait un liseré
+       * net, qui la détache d'un fond chargé mieux qu'un halo flou.
+       */
+      gapWidth?: number | unknown[];
+    }
+  | {
+      /**
+       * Une lueur qui parcourt une ligne — un véhicule sur sa voie.
+       *
+       * Le dégradé de `line-gradient` ne peint pas une couleur unie : il
+       * l'étale le long du tracé, de son début à sa fin. En déplaçant à chaque
+       * image la position d'une tache claire dans ce dégradé, on obtient un
+       * point lumineux qui file le long des rails — sans ajouter la moindre
+       * donnée, et sans que rien ne bouge côté géométrie : c'est le GPU qui
+       * repeint.
+       *
+       * TROIS CONTRAINTES, toutes imposées par MapLibre :
+       *
+       *   - la source doit déclarer `lineMetrics: true` ;
+       *   - `line-gradient` est incompatible avec `line-dasharray` — une ligne
+       *     en pointillé ne peut pas porter de dégradé ;
+       *   - la source doit être une ligne CONTINUE. Sur des tronçons séparés,
+       *     la lueur se répète sur chacun au lieu de parcourir l'ensemble.
+       *
+       * Le pas de la géométrie doit être régulier, sinon la lueur paraît
+       * accélérer et ralentir sans raison : ce n'est pas un défaut de
+       * l'animation, c'est la distance réelle entre sommets qui varie.
+       */
+      kind: "pulse";
+      /** Couleur de la lueur. */
+      color: string;
+      /** Largeur du trait, en pixels. */
+      width?: number | unknown[];
+      /** Longueur de la lueur, en fraction de la ligne entière (0 à 1). */
+      length?: number;
+      /** Durée d'un aller complet, en millisecondes. */
+      duration?: number;
+      cap?: "butt" | "round" | "square";
+      join?: "bevel" | "round" | "miter";
     }
   | {
       kind: "circle";
@@ -355,8 +399,15 @@ export type LabHoverRow = {
 export type LabDefinition = {
   /** Identifiant stable, repris dans le champ `lab` d'une entrée. */
   id: string;
-  /** Sources de données : clé → chemin public versionné, ex. `/data/x-v1.geojson`. */
-  sources: Record<string, string>;
+  /**
+   * Sources de données : clé → chemin public versionné, ex. `/data/x-v1.geojson`.
+   *
+   * La forme longue `{ url, lineMetrics }` ne sert qu'aux sources dont une
+   * couche sera peinte par `line-gradient` : MapLibre doit alors mesurer la
+   * distance parcourue le long de chaque ligne, ce qu'il ne fait pas par
+   * défaut parce que c'est un calcul de plus à chaque tuile.
+   */
+  sources: Record<string, string | { url: string; lineMetrics?: boolean }>;
   layers: LabLayer[];
   view: LabView;
   /**

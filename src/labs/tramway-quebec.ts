@@ -100,7 +100,10 @@ const tramwayQuebec: LabDefinition = {
   id: "tramway-quebec",
 
   sources: {
-    tramway: "/data/tramway-quebec-v1.geojson",
+    // `lineMetrics` fait mesurer à MapLibre la distance parcourue le long de
+    // chaque ligne. Sans elle, `line-gradient` ne sait pas où il en est, et la
+    // lueur du tramway ne peut pas exister.
+    tramway: { url: "/data/tramway-quebec-v1.geojson", lineMetrics: true },
     marche: "/data/tramway-aires-marche-v1.geojson",
   },
 
@@ -212,7 +215,42 @@ const tramwayQuebec: LabDefinition = {
       cap: "butt",
     },
 
-    // 5 — Les stations, au-dessus de tout : c'est ce qu'on vient chercher.
+    // 5 — La rame qui parcourt la ligne.
+    //
+    // Posée sur la couche `ligne` — la géométrie continue de 1 451 sommets,
+    // régulière à 12 m — et non sur les tronçons : sur des segments séparés, la
+    // lueur se répéterait sur chacun au lieu de faire le trajet.
+    //
+    // Ce n'est pas un ornement. Une ligne dessinée ne dit pas qu'elle se
+    // parcourt ; une lueur qui la remonte le dit sans un mot, et donne au
+    // lecteur le sens de marche — de Charlesbourg vers Cap-Rouge, ici.
+    //
+    // Elle disparaît pour qui demande moins de mouvement, et s'arrête hors de
+    // l'écran : voir `LabMap`.
+    {
+      kind: "pulse",
+      source: "tramway",
+      filter: ["==", ["get", "couche"], "ligne"],
+      color: "#fde68a",
+      width: [
+        "interpolate",
+        ["exponential", 1.5],
+        ["zoom"],
+        10, 3,
+        13, 5,
+        16, 8,
+        18, 12,
+      ],
+      // 4 % de la ligne : à 17,4 km, une traînée d'environ 700 m. Assez longue
+      // pour se voir à l'échelle de la ville, assez courte pour qu'on lise un
+      // véhicule et non un flux.
+      length: 0.04,
+      // 14 secondes pour les 17,4 km. Un aller rapide — il s'agit de montrer un
+      // sens de parcours, pas de simuler un horaire.
+      duration: 14000,
+    },
+
+    // 6 — Les stations, au-dessus de tout : c'est ce qu'on vient chercher.
     {
       kind: "circle",
       source: "marche",
@@ -385,8 +423,8 @@ const tramwayQuebec: LabDefinition = {
    * choisit parmi des formes écrites, il ne calcule rien dans le navigateur.
    */
   select: {
-    // Indice 6 : la couche des stations.
-    layers: [6],
+    // Indice 7 : la couche des stations.
+    layers: [7],
     key: "station",
     title: "nom",
     empty: {

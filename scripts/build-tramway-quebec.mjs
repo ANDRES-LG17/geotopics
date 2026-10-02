@@ -83,13 +83,183 @@ function longueurKm(points) {
 }
 
 /**
- * Arrondi à quatre décimales — environ 11 m à cette latitude.
+ * Arrondi des coordonnées exportées.
  *
- * C'est la règle de `public/data/README.md` : au-delà, on transporte des
- * chiffres que la donnée source ne garantit pas, et le fichier grossit pour
- * rien.
+ * CINQ DÉCIMALES, PAS QUATRE. La règle de `public/data/README.md` est quatre
+ * décimales — environ 11 m — et elle convient à des polygones qu'on regarde de
+ * loin. Elle ne convient pas à une ligne lissée : arrondir à 11 m remet des
+ * marches d'escalier dans une courbe qu'on vient d'adoucir, et le travail de
+ * lissage se perd au moment de l'écriture.
+ *
+ * Cinq décimales valent environ 1,1 m. Le fichier grossit d'un dixième, ce qui
+ * ne pèse rien sur 10 ko.
  */
-const arrondi = (n) => Math.round(n * 1e4) / 1e4;
+const arrondi = (n) => Math.round(n * 1e5) / 1e5;
+
+// --- géométrie : nettoyage, redensification, lissage -----------------------
+
+/**
+ * Supprime les sommets inutiles d'une polyligne.
+ *
+ * Deux cas, qui se ressemblent à l'écran et pas dans la donnée :
+ *
+ *   - les DOUBLONS, deux sommets au même endroit. Invisibles, mais ils cassent
+ *     tout algorithme de lissage (une direction ne se calcule pas sur un
+ *     segment de longueur nulle) et faussent les métriques de ligne dont
+ *     `line-gradient` a besoin. L'export brut d'OSM en contient ;
+ *   - les sommets QUASI COLINÉAIRES, qui s'écartent de moins de `toleranceM`
+ *     de la droite joignant leurs voisins. Ils n'ajoutent aucune forme et
+ *     alourdissent le fichier.
+ */
+function nettoyer(points, toleranceM = 1) {
+  const sansDoublons = points.filter(
+    (p, i) => i === 0 || distanceKm(points[i - 1], p) * 1000 > 0.1,
+  );
+  if (sansDoublons.length < 3) return sansDoublons;
+
+  const garde = [sansDoublons[0]];
+  for (let i = 1; i < sansDoublons.length - 1; i += 1) {
+    const a = garde[garde.length - 1];
+    const b = sansDoublons[i];
+    const c = sansDoublons[i + 1];
+
+    // Distance de b à la droite (a,c), en mètres. Produit vectoriel sur la
+    // base du segment : l'aire du triangle divisée par sa base.
+    const base = distanceKm(a, c) * 1000;
+    if (base < 0.1) {
+      garde.push(b);
+      continue;
+    }
+    const kx = RAD * RAYON_TERRE_KM * 1000 * Math.cos(a.lat * RAD);
+    const ky = RAD * RAYON_TERRE_KM * 1000;
+    const aire = Math.abs(
+      ((c.lon - a.lon) * kx) * ((b.lat - a.lat) * ky) -
+        ((b.lon - a.lon) * kx) * ((c.lat - a.lat) * ky),
+    );
+    if (aire / base > toleranceM) garde.push(b);
+  }
+  garde.push(sansDoublons[sansDoublons.length - 1]);
+  return garde;
+}
+
+/**
+ * Insère des sommets pour que plus aucun segment ne dépasse `pasM`.
+ *
+ * POURQUOI AVANT DE LISSER — le tracé d'OSM mêle des segments de 50 m et des
+ * segments de 810 m. Un lissage appliqué tel quel adoucit beaucoup là où les
+ * sommets sont serrés et presque pas là où ils sont espacés : la ligne devient
+ * inégale, molle par endroits et anguleuse ailleurs. Redensifier d'abord donne
+ * au lissage une matière homogène.
+ *
+ * C'est aussi ce dont `line-gradient` a besoin : une vitesse apparente
+ * constante le long de la ligne suppose des sommets régulièrement espacés.
+ */
+function redensifier(points, pasM = 20) {
+  if (points.length < 2) return points;
+
+  // Rééchantillonnage, et non simple découpage : on avance le long de la
+  // polyligne en posant un sommet tous les `pasM`, sans tenir compte des
+  // sommets d'origine. Un découpage segment par segment ne peut qu'ajouter des
+  // points — il laisse intacts ceux qui sont déjà trop serrés, et Chaikin en
+  // produit beaucoup. Le pas resterait alors irrégulier.
+  const sortie = [points[0]];
+  let reste = pasM;
+
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1];
+    const b = points[i];
+    let longueur = distanceKm(a, b) * 1000;
+    if (longueur === 0) continue;
+
+    let parcouru = 0;
+    while (longueur - parcouru >= reste) {
+      parcouru += reste;
+      const t = parcouru / longueur;
+      sortie.push({
+        lon: a.lon + (b.lon - a.lon) * t,
+        lat: a.lat + (b.lat - a.lat) * t,
+      });
+      reste = pasM;
+    }
+    reste -= longueur - parcouru;
+  }
+
+  // Le dernier sommet est conservé tel quel : une ligne qui ne finit plus à son
+  // terminus aurait changé de tracé.
+  const fin = points[points.length - 1];
+  if (distanceKm(sortie[sortie.length - 1], fin) * 1000 > 1) sortie.push(fin);
+  return sortie;
+}
+
+/**
+ * Lissage de Chaikin — chaque sommet est remplacé par deux points à un quart
+ * et trois quarts du segment, et l'opération se répète.
+ *
+ * POURQUOI CHAIKIN ET NON CATMULL-ROM — une spline de Catmull-Rom passe PAR
+ * tous les sommets déclarés et courbe entre eux. Chaikin, lui, coupe les
+ * angles : la courbe obtenue ne passe plus par les sommets, elle les frôle.
+ *
+ * C'est exactement ce que fait une voie ferrée. Un tramway ne pivote pas sur
+ * un point, il décrit une courbe de raccordement — et le tracé d'OSM, relevé
+ * sommet par sommet, contient trente-neuf angles de plus de 25° dont un de 95°,
+ * qui sont des artefacts de numérisation et non des virages réels.
+ *
+ * Les extrémités sont conservées : une ligne lissée qui ne part plus de son
+ * terminus aurait changé de tracé, pas d'apparence.
+ */
+function lisser(points, iterations = 2) {
+  let courant = points;
+  for (let n = 0; n < iterations; n += 1) {
+    if (courant.length < 3) return courant;
+    const suivant = [courant[0]];
+    for (let i = 0; i < courant.length - 1; i += 1) {
+      const a = courant[i];
+      const b = courant[i + 1];
+      suivant.push(
+        { lon: a.lon * 0.75 + b.lon * 0.25, lat: a.lat * 0.75 + b.lat * 0.25 },
+        { lon: a.lon * 0.25 + b.lon * 0.75, lat: a.lat * 0.25 + b.lat * 0.75 },
+      );
+    }
+    suivant.push(courant[courant.length - 1]);
+    courant = suivant;
+  }
+  return courant;
+}
+
+/**
+ * La chaîne complète : nettoyer, rééchantillonner, lisser, rééchantillonner.
+ *
+ * L'ORDRE A ÉTÉ TROUVÉ PAR ESSAIS, et trois versions fausses valent d'être
+ * notées — chacune échouait d'une façon différente.
+ *
+ *   1. Redensifier, lisser, nettoyer (tolérance 60 cm) : le nettoyage final
+ *      ramenait la ligne de 800 sommets à 56 et effaçait le lissage qu'on
+ *      venait d'appliquer.
+ *   2. Nettoyer, lisser, redensifier : la ligne devenait régulière, mais le
+ *      rééchantillonnage repose les sommets à intervalle fixe **y compris dans
+ *      les courbes**, ce qui y recrée des angles. L'angle le plus vif
+ *      remontait de 42° à 71°.
+ *   3. Rééchantillonner plus fin : l'angle baissait un peu, le fichier
+ *      doublait, et treize angles de plus de 25° subsistaient — autant que
+ *      dans la donnée brute.
+ *
+ * L'ordre juste tient en une idée : le lissage doit venir EN DERNIER sur une
+ * matière déjà régulière. On rééchantillonne donc deux fois — une première à
+ * pas large pour donner à Chaikin des segments égaux, une seconde plus fine
+ * après, qui repose le pas final sans recouper les courbes.
+ */
+function affiner(points) {
+  const propre = nettoyer(points, 0.5);
+  // Pas large en entrée : Chaikin coupe les angles d'autant plus franchement
+  // que les segments qu'on lui donne sont longs.
+  const regulier = redensifier(propre, 30);
+  // Trois itérations : à deux, l'angle le plus vif retombait de 98° à 68°, ce
+  // qui reste un coude sur une voie ferrée.
+  const doux = lisser(regulier, 3);
+  // Pas final plus fin que le pas d'entrée, pour suivre la courbe plutôt que
+  // la recouper.
+  return redensifier(doux, 12);
+}
 
 // --- chaînage --------------------------------------------------------------
 
@@ -212,7 +382,60 @@ function chainer(segments) {
 }
 
 const { chaine, isoles } = chainer(troncons);
-const ordonnes = chaine;
+
+/**
+ * Le lissage s'applique à la chaîne ENTIÈRE, puis se redécoupe en tronçons.
+ *
+ * Lisser chaque tronçon séparément laisserait un angle vif à chacune de leurs
+ * jonctions — précisément là où le tracé passe du tunnel à la surface, c'est-à-
+ * dire à l'endroit que le lab veut montrer. On lisse donc la ligne continue,
+ * puis on rend à chaque tronçon la portion qui lui revient, repérée par la
+ * distance cumulée.
+ */
+const pointsBruts = chaine.flatMap((t, i) =>
+  i === 0 ? t.points : t.points.slice(1),
+);
+const pointsLisses = affiner(pointsBruts);
+
+/**
+ * Indice du sommet lissé le plus proche d'un point donné.
+ *
+ * C'est ainsi qu'on retrouve les frontières entre tronçons après lissage, et
+ * non par une règle de trois sur les longueurs. Un premier essai répartissait
+ * au prorata des longueurs brutes : le tunnel, long de 1,73 km, s'y retrouvait
+ * réduit à 0,84 km. Le lissage ne raccourcit pas uniformément — il mord
+ * davantage là où les angles sont vifs — et une proportion ne peut pas le
+ * suivre. La jonction réelle, elle, reste au même endroit du terrain.
+ */
+function plusProche(cible, points) {
+  let meilleur = 0;
+  let distance = Infinity;
+  for (let i = 0; i < points.length; i += 1) {
+    const d = distanceKm(cible, points[i]);
+    if (d < distance) {
+      distance = d;
+      meilleur = i;
+    }
+  }
+  return meilleur;
+}
+
+// Les frontières : le point de départ de chaque tronçon, retrouvé sur la ligne
+// lissée.
+const frontieres = chaine.map((t) => plusProche(t.points[0], pointsLisses));
+frontieres.push(pointsLisses.length - 1);
+
+const ordonnes = chaine.map((troncon, i) => {
+  const debut = frontieres[i];
+  const fin = frontieres[i + 1];
+  const points = pointsLisses.slice(debut, fin + 1);
+  // Un tronçon très court peut ne retenir aucun sommet : on lui garde au moins
+  // ses deux extrémités, sinon il disparaît de la carte.
+  return {
+    ...troncon,
+    points: points.length >= 2 ? points : troncon.points,
+  };
+});
 
 // --- entités ---------------------------------------------------------------
 
@@ -269,18 +492,22 @@ ordonnes.forEach((troncon, index) => {
  */
 isoles.forEach((troncon) => {
   const tags = troncon.tags ?? {};
+  // Lissés eux aussi : laissés bruts, ils trancheraient à côté du tracé
+  // principal, et ce n'est pas leur statut qu'on veut signaler par un aspect
+  // différent — la couche et la couleur s'en chargent.
+  const points = affiner(troncon.points);
   entites.push({
     type: "Feature",
     properties: {
       couche: "tronçon_isolé",
       osm_id: troncon.id,
       etat: tags.railway ?? "proposed",
-      longueur_km: Math.round(longueurKm(troncon.points) * 100) / 100,
+      longueur_km: Math.round(longueurKm(points) * 100) / 100,
       note: "Non raccordé au tracé principal dans OSM.",
     },
     geometry: {
       type: "LineString",
-      coordinates: troncon.points.map((p) => [arrondi(p.lon), arrondi(p.lat)]),
+      coordinates: points.map((p) => [arrondi(p.lon), arrondi(p.lat)]),
     },
   });
 });
@@ -292,9 +519,9 @@ isoles.forEach((troncon) => {
  * dessiner la ligne d'un trait, sans les coutures qui apparaissent quand sept
  * segments se superposent aux raccords.
  */
-const tousLesPoints = ordonnes.flatMap((t, i) =>
-  i === 0 ? t.points : t.points.slice(1),
-);
+// La ligne lissée telle quelle : c'est elle qui porte la géométrie continue
+// dont une animation le long du tracé aura besoin.
+const tousLesPoints = pointsLisses;
 
 entites.push({
   type: "Feature",
@@ -375,6 +602,43 @@ if (tunnel) {
 console.log(`  emprise : ${emprise.join(", ")}`);
 
 console.log(`  ordre : ${ordonnes.map((t) => t.id).join(" → ")}`);
+
+// Qualité géométrique, avant et après affinage. Les angles vifs sont ce qui
+// fait qu'un tracé « paraît sale » : un tramway ne pivote pas sur un point.
+function qualite(points) {
+  const segments = [];
+  for (let i = 1; i < points.length; i += 1) {
+    segments.push(distanceKm(points[i - 1], points[i]) * 1000);
+  }
+  const angles = [];
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const a = points[i - 1];
+    const b = points[i];
+    const c = points[i + 1];
+    const v1 = [b.lon - a.lon, b.lat - a.lat];
+    const v2 = [c.lon - b.lon, c.lat - b.lat];
+    const n1 = Math.hypot(...v1);
+    const n2 = Math.hypot(...v2);
+    if (!n1 || !n2) continue;
+    const cos = Math.max(-1, Math.min(1, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)));
+    angles.push((Math.acos(cos) * 180) / Math.PI);
+  }
+  segments.sort((a, b) => a - b);
+  return {
+    sommets: points.length,
+    median: segments[Math.floor(segments.length / 2)] ?? 0,
+    vifs: angles.filter((a) => a > 25).length,
+    max: angles.length ? Math.max(...angles) : 0,
+  };
+}
+
+const avant = qualite(pointsBruts);
+const apres = qualite(pointsLisses);
+console.log(
+  `\n  géométrie   sommets   segment médian   angles > 25°   angle max\n` +
+    `  brut        ${String(avant.sommets).padStart(7)}   ${avant.median.toFixed(0).padStart(12)} m   ${String(avant.vifs).padStart(12)}   ${avant.max.toFixed(0).padStart(8)}°\n` +
+    `  affiné      ${String(apres.sommets).padStart(7)}   ${apres.median.toFixed(0).padStart(12)} m   ${String(apres.vifs).padStart(12)}   ${apres.max.toFixed(0).padStart(8)}°`,
+);
 
 if (isoles.length > 0) {
   console.log(`\n  ${isoles.length} tronçon(s) hors chaîne :`);

@@ -477,6 +477,134 @@ qu'en bandeau : le panneau a de la place en bas, et c'est de toute façon là
 qu'on lit ce que la carte montre. L'attribution n'est pas facultative — ODbL
 l'exige.
 
+### Lisser le tracé
+
+**Constaté à l'œil** — le tracé « paraît sale ». La mesure a confirmé pourquoi.
+
+| | |
+| --- | --- |
+| Sommets | 200 pour 17,5 km |
+| Segment médian | 48 m |
+| Segment le plus court | **0,0 m** — des doublons exacts |
+| Segment le plus long | **810 m** |
+| Angles de plus de 25° | 13 |
+| Angle le plus vif | **98°** |
+
+Trois défauts distincts, qu'un seul remède n'aurait pas corrigés :
+
+1. **Densité inégale** — un segment de 810 m dessiné d'un trait à côté de
+   segments de 50 m : un coude là où la voie courbe, des micro-tremblements là
+   où les sommets se serrent ;
+2. **Angles impossibles** — un tramway ne pivote pas de 98° sur un point. Son
+   rayon de courbure minimal avoisine 25 m. Ces angles sont des artefacts de
+   numérisation d'OSM, pas des virages réels ;
+3. **Doublons exacts** — invisibles, mais ils cassent tout algorithme de
+   lissage (une direction ne se calcule pas sur un segment nul) et fausseront
+   les métriques dont `line-gradient` a besoin pour une animation.
+
+**La méthode retenue : Chaikin, et non Catmull-Rom.** Une spline de Catmull-Rom
+passe PAR tous les sommets et courbe entre eux ; Chaikin coupe les angles — la
+courbe frôle les sommets au lieu de les traverser. C'est ce que fait une voie
+ferrée, qui décrit une courbe de raccordement là où un relevé pose un point.
+
+**L'ordre a demandé quatre essais**, et c'est la partie qui valait d'être
+notée :
+
+| Essai | Ordre | Résultat |
+| --- | --- | --- |
+| 1 | redensifier, lisser, **nettoyer (60 cm)** | le nettoyage final ramenait 800 sommets à 56 et effaçait le lissage |
+| 2 | nettoyer, lisser, redensifier | régulier, mais le rééchantillonnage **recrée des angles dans les courbes** : 42° → 71° |
+| 3 | idem, pas plus fin | fichier doublé, treize angles vifs — autant que le brut |
+| **4** | **nettoyer, redensifier (30 m), lisser, redensifier (12 m)** | **le bon** |
+
+L'idée qui les départage : **le lissage doit venir en dernier, sur une matière
+déjà régulière**. D'où deux rééchantillonnages — un large en entrée, pour que
+Chaikin ait des segments égaux à couper ; un plus fin en sortie, qui repose le
+pas final sans recouper les courbes.
+
+**Résultat :**
+
+| | brut | affiné |
+| --- | --- | --- |
+| Sommets | 200 | 1 451 |
+| Segment médian | 48 m irrégulier | **12,0 m constant** |
+| Angles > 25° | 13 | **6** |
+| Angle maximal | **98°** | **43°** |
+| Poids du fichier | 10,3 ko | 63,3 ko |
+
+**Deux décisions de méthode attenantes :**
+
+- **Cinq décimales au lieu de quatre.** La règle de `public/data/README.md` est
+  quatre décimales (≈ 11 m), bonne pour des polygones qu'on regarde de loin.
+  Elle remettait des marches d'escalier dans la courbe qu'on venait d'adoucir :
+  le lissage se perdait à l'écriture. Cinq décimales valent 1,1 m.
+- **Le lissage s'applique à la ligne entière, puis se redécoupe.** Lisser
+  chaque tronçon séparément laissait un angle vif à chaque jonction —
+  précisément là où le tracé passe du tunnel à la surface. Les frontières sont
+  retrouvées par **le sommet lissé le plus proche**, et non au prorata des
+  longueurs : un premier essai au prorata réduisait le tunnel de 1,73 km à
+  0,84 km, parce que le lissage ne raccourcit pas uniformément — il mord
+  davantage là où les angles sont vifs.
+
+**Le fichier passe de 10 à 63 ko**, ce qui reste négligeable et achète la pièce
+centrale du lab. Cette régularité est aussi ce dont une animation le long du
+tracé aura besoin : à pas inégal, un train paraîtrait accélérer et ralentir sans
+raison.
+
+### Une rame parcourt la ligne
+
+**Fait** — une lueur remonte le tracé de Charlesbourg vers Cap-Rouge, en
+quatorze secondes.
+
+**La méthode : `line-gradient`, et rien d'autre.** MapLibre sait étaler une
+couleur le long d'une ligne, du début à la fin. En déplaçant à chaque image la
+position d'une tache claire dans ce dégradé, on obtient un point lumineux qui
+file sur les rails. Aucune donnée ajoutée, aucune géométrie recalculée : c'est
+le GPU qui repeint.
+
+Les deux autres voies envisagées, et pourquoi elles ont été écartées :
+
+- **un point GeoJSON déplacé à chaque image** — il faudrait recalculer une
+  position le long de la ligne, réécrire la source, et laisser MapLibre
+  retraiter ses tuiles soixante fois par seconde. Plus de contrôle (on pourrait
+  marquer un arrêt en station), beaucoup plus cher ;
+- **`line-dasharray` décalé** — l'effet « fourmis qui marchent ». Le moins cher
+  des trois, mais il donne un flux, pas un véhicule.
+
+**Trois contraintes imposées par MapLibre**, toutes découvertes en chemin :
+
+1. la source doit déclarer `lineMetrics: true`, sinon le dégradé ne sait pas où
+   il en est. C'est un calcul de plus à chaque tuile, d'où le fait qu'il ne soit
+   pas activé par défaut — et d'où la forme longue ajoutée au vocabulaire des
+   sources ;
+2. `line-gradient` est **incompatible avec `line-dasharray`** : la rame ne peut
+   donc pas emprunter la couche du tunnel, qui est en pointillé ;
+3. la géométrie doit être **continue**. Sur des tronçons séparés, la lueur se
+   répéterait sur chacun au lieu de parcourir l'ensemble.
+
+Cette troisième contrainte explique l'intérêt rétrospectif de la couche
+`ligne` : elle existait depuis le premier export, inutilisée, et c'est
+exactement ce qu'il fallait.
+
+**Ce que le lissage rend possible.** Une lueur avance à vitesse constante **dans
+le dégradé**, pas sur le terrain : si les sommets sont irréguliers, elle paraît
+accélérer et ralentir sans raison. Le pas constant de 12 m obtenu plus haut est
+donc ce qui rend l'animation crédible — ce n'était pas le but du lissage, c'en
+est la conséquence heureuse.
+
+**Deux garde-fous, pour ne pas vider une batterie :**
+
+- un `IntersectionObserver` arrête l'animation dès que la carte sort de
+  l'écran ;
+- `visibilitychange` l'arrête sur un onglet caché.
+
+Et `prefers-reduced-motion` la supprime entièrement : la ligne reste dessinée
+par ses autres couches, rien ne manque à la lecture.
+
+**Pourquoi ce n'est pas un ornement** — une ligne dessinée ne dit pas qu'elle se
+parcourt. Une lueur qui la remonte le dit sans un mot, et donne au lecteur le
+**sens de la marche**, que rien d'autre sur la carte n'indique.
+
 ---
 
 ## Décisions structurantes

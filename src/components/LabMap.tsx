@@ -414,6 +414,113 @@ export default function LabMap({
   }, [choisi, donneesPanneau, onSelection]);
 
   /**
+   * La lueur qui parcourt la ligne.
+   *
+   * Rien ne bouge côté données : on repeint à chaque image le dégradé de la
+   * couche, en déplaçant la position de la tache claire. Le GPU fait le reste.
+   *
+   * ARRÊTÉE QUAND ELLE NE SERT À RIEN — hors de l'écran (`IntersectionObserver`)
+   * et sur un onglet caché (`visibilitychange`). Une animation qui tourne dans
+   * un onglet qu'on ne regarde pas vide la batterie sans que personne n'en
+   * profite.
+   *
+   * `prefers-reduced-motion` la supprime : la ligne reste alors dessinée par
+   * ses autres couches, et rien ne manque à la lecture.
+   */
+  useEffect(() => {
+    const index = lab.layers.findIndex((c) => c.kind === "pulse");
+    if (index < 0) return;
+    const couche = lab.layers[index] as Extract<
+      (typeof lab.layers)[number],
+      { kind: "pulse" }
+    >;
+    const id = `lab-layer-${index}`;
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const duree = couche.duration ?? 9000;
+    const longueur = couche.length ?? 0.06;
+    let image = 0;
+    let visible = true;
+    let debut: number | null = null;
+
+    const peindre = (temps: number) => {
+      const map = mapRef.current;
+      if (!map || !map.getLayer(id)) {
+        image = requestAnimationFrame(peindre);
+        return;
+      }
+      if (debut === null) debut = temps;
+
+      // Position de la tête de la lueur, de 0 à 1 le long de la ligne.
+      const tete = ((temps - debut) % duree) / duree;
+      const queue = tete - longueur;
+
+      // Le dégradé doit être écrit par positions CROISSANTES, sans doublon :
+      // MapLibre rejette l'expression sinon, et la couche disparaît en silence.
+      const bornes = new Map<number, string>();
+      const poser = (p: number, couleur: string) => {
+        const borne = Math.min(1, Math.max(0, p));
+        if (!bornes.has(borne)) bornes.set(borne, couleur);
+      };
+
+      poser(0, queue <= 0 ? couche.color : "rgba(0,0,0,0)");
+      if (queue > 0) poser(queue, "rgba(0,0,0,0)");
+      poser(tete, couche.color);
+      poser(Math.min(1, tete + 0.001), "rgba(0,0,0,0)");
+      poser(1, "rgba(0,0,0,0)");
+
+      const arrets = [...bornes.entries()].sort((a, b) => a[0] - b[0]);
+      try {
+        map.setPaintProperty(id, "line-gradient", [
+          "interpolate",
+          ["linear"],
+          ["line-progress"],
+          ...arrets.flat(),
+        ] as never);
+      } catch {
+        // Une expression refusée ne doit pas tuer la boucle : on réessaiera à
+        // l'image suivante, avec d'autres bornes.
+      }
+      image = requestAnimationFrame(peindre);
+    };
+
+    const demarrer = () => {
+      if (image) return;
+      debut = null;
+      image = requestAnimationFrame(peindre);
+    };
+    const arreter = () => {
+      cancelAnimationFrame(image);
+      image = 0;
+    };
+
+    const observateur = new IntersectionObserver(
+      ([entree]) => {
+        visible = entree.isIntersecting;
+        if (visible && !document.hidden) demarrer();
+        else arreter();
+      },
+      { threshold: 0 },
+    );
+    observateur.observe(container);
+
+    const surOnglet = () => {
+      if (document.hidden || !visible) arreter();
+      else demarrer();
+    };
+    document.addEventListener("visibilitychange", surOnglet);
+
+    return () => {
+      arreter();
+      observateur.disconnect();
+      document.removeEventListener("visibilitychange", surOnglet);
+    };
+  }, [lab]);
+
+  /**
    * La carte suit la taille de son conteneur.
    *
    * Nécessaire depuis que le panneau vit à l'extérieur : son ouverture rétrécit
@@ -679,8 +786,17 @@ export default function LabMap({
         });
       }
 
-      for (const [id, url] of Object.entries(lab.sources)) {
-        map.addSource(id, { type: "geojson", data: url });
+      for (const [id, source] of Object.entries(lab.sources)) {
+        const config =
+          typeof source === "string" ? { url: source } : source;
+        map.addSource(id, {
+          type: "geojson",
+          data: config.url,
+          // Mesure la distance parcourue le long de chaque ligne. Nécessaire à
+          // `line-gradient`, et calculée seulement sur demande : c'est un
+          // travail de plus à chaque tuile.
+          ...(config.lineMetrics ? { lineMetrics: true } : {}),
+        });
       }
 
       // L'ordre du tableau est l'ordre de peinture : la dernière couche
@@ -745,6 +861,41 @@ export default function LabMap({
                 "line-width": (layer.width ?? 1) as number,
                 "line-opacity": layer.opacity ?? 1,
                 ...(layer.dash ? { "line-dasharray": layer.dash } : {}),
+                ...(layer.gapWidth !== undefined
+                  ? { "line-gap-width": layer.gapWidth as number }
+                  : {}),
+              },
+            });
+            break;
+
+          case "pulse":
+            map.addLayer({
+              id,
+              type: "line",
+              source: layer.source,
+              ...filter,
+              layout: {
+                "line-cap": layer.cap ?? "round",
+                "line-join": layer.join ?? "round",
+              },
+              paint: {
+                // Une couleur de base est obligatoire même quand le dégradé la
+                // remplace : MapLibre refuse une couche de ligne sans elle.
+                "line-color": layer.color,
+                "line-width": (layer.width ?? 4) as number,
+                // Le dégradé initial est entièrement transparent : la lueur
+                // n'apparaît qu'au premier passage de l'animation, et une
+                // carte dont le JavaScript ne démarre pas ne montre donc rien
+                // d'étrange — seulement rien.
+                "line-gradient": [
+                  "interpolate",
+                  ["linear"],
+                  ["line-progress"],
+                  0,
+                  "rgba(0,0,0,0)",
+                  1,
+                  "rgba(0,0,0,0)",
+                ],
               },
             });
             break;

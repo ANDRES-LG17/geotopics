@@ -161,7 +161,9 @@
       "Bash(sed -i 's|const { result } = await send\\(\"Runtime.evaluate\", {|await new Promise\\(r=>setTimeout\\(r,1500\\)\\);\\\\nconst { result } = await send\\(\"Runtime.evaluate\", {|' state.mjs)",
       "Bash(node state.mjs)",
       "Bash(curl -s -o /dev/null -w \"LAN  192.168.2.14:3000 -> HTTP %{http_code}\\\\n\" --max-time 25 http://192.168.2.14:3000/)",
-      "Bash(curl -s -o /dev/null -w \"localhost:3000     -> HTTP %{http_code}\\\\n\" --max-time 25 http://localhost:3000/)"
+      "Bash(curl -s -o /dev/null -w \"localhost:3000     -> HTTP %{http_code}\\\\n\" --max-time 25 http://localhost:3000/)",
+      "Bash(curl -s \"http://localhost:3000/data/tramway-quebec-v1.geojson\" -o /dev/null -w \"geojson: %{http_code} \\(%{size_download} o\\)\\\\n\")",
+      "Bash(curl -s \"http://localhost:3000/data/tramway-quebec-v1.geojson\")"
     ]
   }
 }
