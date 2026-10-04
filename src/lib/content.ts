@@ -2,6 +2,7 @@ import "server-only";
 
 import fs from "node:fs";
 import path from "node:path";
+import { cache } from "react";
 import matter from "gray-matter";
 import { remark } from "remark";
 import remarkHtml from "remark-html";
@@ -103,12 +104,26 @@ function parseFile(filename: string): { meta: EntryMeta; body: string } | null {
   };
 }
 
-function allParsed() {
-  return listFiles()
+/**
+ * Toutes les entrées lues et analysées — **une seule fois par rendu**.
+ *
+ * POURQUOI UN CACHE — cette fonction relit le dossier, ouvre chaque fichier et
+ * analyse chaque en-tête YAML. Elle est appelée par la page d'accueil, la liste
+ * du carnet, le flux RSS et le plan du site, et plusieurs fois au sein d'un même
+ * rendu : sans cache, les dix fichiers du carnet étaient relus du disque à
+ * chaque appel.
+ *
+ * `cache` de React mémorise le résultat pour la durée d'une requête, et pas
+ * au-delà : en développement, ajouter une entrée ou corriger un en-tête se voit
+ * au rechargement suivant, comme avant. Ce n'est donc pas un cache de contenu —
+ * c'est la suppression d'un travail refait inutilement dans le même rendu.
+ */
+const allParsed = cache(() =>
+  listFiles()
     .map(parseFile)
     .filter((p): p is { meta: EntryMeta; body: string } => p !== null)
-    .filter((p) => SHOW_DRAFTS || !p.meta.draft);
-}
+    .filter((p) => SHOW_DRAFTS || !p.meta.draft),
+);
 
 /** Toutes les entrées d'une langue, de la plus récente à la plus ancienne. */
 export function getEntriesByLocale(locale: Locale): EntryMeta[] {
@@ -126,18 +141,24 @@ export function getAllEntryParams(): { locale: Locale; slug: string }[] {
   }));
 }
 
-/** Une entrée complète, markdown converti en HTML. `null` si elle n'existe pas. */
-export async function getEntry(
-  locale: Locale,
-  slug: string,
-): Promise<Entry | null> {
-  const parsed = parseFile(`${slug}.${locale}.md`);
-  if (!parsed) return null;
-  // Deuxième garde, indispensable : `generateStaticParams` ne fabrique pas la
-  // page d'un brouillon, mais une URL devinée serait rendue à la demande.
-  if (parsed.meta.draft && !SHOW_DRAFTS) return null;
+/**
+ * Une entrée complète, markdown converti en HTML. `null` si elle n'existe pas.
+ *
+ * Mise en cache pour la durée d'une requête : une page d'article appelle cette
+ * fonction trois fois — pour ses métadonnées, pour son JSON-LD et pour son
+ * corps — et la conversion markdown → HTML est le travail le plus coûteux de
+ * tout le rendu. Sans cache, remark tournait trois fois sur le même texte.
+ */
+export const getEntry = cache(
+  async (locale: Locale, slug: string): Promise<Entry | null> => {
+    const parsed = parseFile(`${slug}.${locale}.md`);
+    if (!parsed) return null;
+    // Deuxième garde, indispensable : `generateStaticParams` ne fabrique pas la
+    // page d'un brouillon, mais une URL devinée serait rendue à la demande.
+    if (parsed.meta.draft && !SHOW_DRAFTS) return null;
 
-  const processed = await remark().use(remarkHtml).process(parsed.body);
+    const processed = await remark().use(remarkHtml).process(parsed.body);
 
-  return { ...parsed.meta, contentHtml: processed.toString() };
-}
+    return { ...parsed.meta, contentHtml: processed.toString() };
+  },
+);

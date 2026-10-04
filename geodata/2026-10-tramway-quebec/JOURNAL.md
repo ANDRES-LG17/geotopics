@@ -690,6 +690,33 @@ expliquent une partie de la lenteur constatée en local. Rien à corriger.
 « dix-sept images par seconde ». Les deux coupables étaient des boucles qui
 tournaient trop vite, pas des fichiers trop gros.
 
+**Résultat mesuré après correction :**
+
+| | avant | après |
+| --- | --- | --- |
+| Chargement complet | 6 390 ms | **2 690 ms** |
+| Boucle de rendu | 17 images/s | **24 images/s** |
+
+### Le carnet relisait ses fichiers à chaque appel
+
+**Trouvé en auditant la page d'accueil** — elle ne télécharge que 140 ko, et
+pourtant son DOM met **5 486 ms** à être prêt. Le poids n'explique rien ; le
+travail serveur, si.
+
+`allParsed()` relit le dossier `content/entries/`, ouvre chaque fichier et
+analyse chaque en-tête YAML. Elle est appelée par la page d'accueil, la liste du
+carnet, le flux RSS et le plan du site — et plusieurs fois au sein d'un même
+rendu. **Sans cache, les dix fichiers étaient relus du disque à chaque appel.**
+
+`getEntry` était pire : une page d'article l'appelle trois fois — métadonnées,
+JSON-LD, corps — et chaque appel relançait la conversion markdown → HTML, le
+travail le plus coûteux du rendu.
+
+*Corrigé* — `cache` de React sur les deux. La mémorisation ne dure que le temps
+d'une requête : en développement, ajouter une entrée se voit toujours au
+rechargement suivant. Ce n'est pas un cache de contenu, c'est la suppression
+d'un travail refait pour rien dans le même rendu.
+
 ---
 
 ## Décisions structurantes

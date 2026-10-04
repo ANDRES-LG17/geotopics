@@ -760,7 +760,12 @@ export default function LabMap({
           return;
         }
 
-        const trouve = map.queryRenderedFeatures(point, { layers: survol });
+        // `[x, y]` plutôt que l'objet : le point mémorisé entre deux images est
+        // une paire de nombres, pas l'instance `Point` de MapLibre, qui porte
+        // trente méthodes dont aucune ne sert ici.
+        const trouve = map.queryRenderedFeatures([point.x, point.y], {
+          layers: survol,
+        });
         if (!trouve.length) {
           map.getCanvas().style.cursor = "";
           setSurvol(null);
