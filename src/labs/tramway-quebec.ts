@@ -231,15 +231,24 @@ const tramwayQuebec: LabDefinition = {
       kind: "pulse",
       source: "tramway",
       filter: ["==", ["get", "couche"], "ligne"],
-      color: "#fde68a",
+      // Blanc, et non ambre.
+      //
+      // Un ambre clair posé sur le rouge du tracé se distinguait mal : deux
+      // teintes chaudes voisines, à largeur presque égale, se confondent. Le
+      // blanc tranche sur le rouge comme sur le bâti, et c'est la couleur qu'on
+      // lit comme une lumière plutôt que comme une seconde ligne.
+      color: "#ffffff",
+      // PLUS LARGE que le tracé — qui fait 7 px au zoom 16 — pour que la rame
+      // le déborde de part et d'autre. À largeur égale elle le recouvrait
+      // exactement, et ne se voyait qu'au changement de couleur.
       width: [
         "interpolate",
         ["exponential", 1.5],
         ["zoom"],
-        10, 3,
-        13, 5,
-        16, 8,
-        18, 12,
+        10, 5,
+        13, 8,
+        16, 13,
+        18, 18,
       ],
       // 7 % de la ligne : à 17,4 km, une traînée d'environ 1,2 km. Une traînée
       // courte file comme un éclair ; allongée, elle se lit comme un véhicule

@@ -463,6 +463,49 @@ export default function LabMap({
     let visible = true;
     let debut: number | null = null;
 
+    /**
+     * Intervalle minimal entre deux repeints, en millisecondes.
+     *
+     * Chaque `setPaintProperty` oblige MapLibre à relire l'expression, la
+     * valider contre la spécification de style, recompiler la rampe de couleur
+     * et repeindre la couche entière — 1 451 sommets. À soixante images par
+     * seconde, ce travail suffisait à faire tomber la carte à dix-sept images
+     * par seconde : l'animation se mangeait elle-même, et tout le reste avec.
+     *
+     * Vingt images par seconde suffisent à une lueur qui met trente-huit
+     * secondes à parcourir la ligne — elle n'avance que de 0,13 % entre deux
+     * images. Le reste du temps machine retourne au défilement et au zoom, qui
+     * sont ce que le lecteur manipule vraiment.
+     */
+    const INTERVALLE_MS = 50;
+    let dernierPeint = 0;
+
+    const TRANSPARENT = "rgba(0,0,0,0)";
+    /** Où placer les paliers de la traînée, de la queue vers la tête. */
+    const PARTS = [0.35, 0.65, 0.85];
+    /** Tableau des bornes du dégradé, alloué une fois et réécrit à chaque image. */
+    const arrets: (number | string)[] = [];
+
+    /**
+     * Les teintes de la traînée, calculées une fois.
+     *
+     * `teinte` fait une analyse hexadécimale et trois `parseInt` ; l'appeler
+     * cinq fois par image pour obtenir toujours les mêmes valeurs était du
+     * travail pur perdu. Seule l'opacité de tête varie en début de cycle, et
+     * elle est arrondie au centième pour que le cache la retrouve.
+     */
+    const cacheTeintes = new Map<number, string>();
+    const fondu = (p: number) => {
+      if (!couche.color.startsWith("#")) return couche.color;
+      const cle = Math.round(Math.min(1, Math.max(0, p)) * 100);
+      let valeur = cacheTeintes.get(cle);
+      if (valeur === undefined) {
+        valeur = teinte(couche.color, cle / 100);
+        cacheTeintes.set(cle, valeur);
+      }
+      return valeur;
+    };
+
     const peindre = (temps: number) => {
       const map = mapRef.current;
       if (!map || !map.getLayer(id)) {
@@ -471,52 +514,58 @@ export default function LabMap({
       }
       if (debut === null) debut = temps;
 
+      if (temps - dernierPeint < INTERVALLE_MS) {
+        image = requestAnimationFrame(peindre);
+        return;
+      }
+      dernierPeint = temps;
+
       // Position de la tête de la lueur, de 0 à 1 le long de la ligne.
       const tete = ((temps - debut) % duree) / duree;
       const queue = tete - longueur;
 
-      // Le dégradé doit être écrit par positions CROISSANTES, sans doublon :
-      // MapLibre rejette l'expression sinon, et la couche disparaît en silence.
-      const bornes = new Map<number, string>();
-      const poser = (p: number, couleur: string) => {
-        const borne = Math.min(1, Math.max(0, p));
-        if (!bornes.has(borne)) bornes.set(borne, couleur);
+      /**
+       * Les bornes du dégradé, écrites dans un tableau RÉUTILISÉ.
+       *
+       * La version précédente construisait une `Map`, la triait, puis
+       * l'aplatissait — trois allocations par image, soixante fois par
+       * seconde. Le ramasse-miettes passait son temps à nettoyer derrière
+       * l'animation.
+       *
+       * Ici les positions sont croissantes par construction, donc ni tri ni
+       * déduplication : on écrit dans un tableau alloué une fois pour toutes.
+       * MapLibre exige des positions strictement croissantes — d'où le
+       * `Math.max` qui garantit l'écart minimal.
+       */
+      let n = 0;
+      let derniere = -1;
+      const ecrire = (p: number, couleur: string) => {
+        const borne = Math.max(derniere + 1e-6, Math.min(1, Math.max(0, p)));
+        if (borne > 1) return;
+        arrets[n++] = borne;
+        arrets[n++] = couleur;
+        derniere = borne;
       };
 
-      /**
-       * La traînée s'éteint par degrés, et non d'un coup.
-       *
-       * Une première version passait de la couleur pleine au transparent en un
-       * millième de la ligne : la rame avait un bord net à l'avant comme à
-       * l'arrière, ce qui donnait un trait qui saute plutôt qu'un véhicule qui
-       * passe. Trois paliers intermédiaires suffisent à faire une comète —
-       * dense en tête, évanouie en queue.
-       */
-      const transparent = "rgba(0,0,0,0)";
-      const fondu = (p: number) =>
-        couche.color.startsWith("#")
-          ? teinte(couche.color, p)
-          : couche.color;
-
-      poser(0, queue <= 0 ? fondu(1 + queue / longueur) : transparent);
-      if (queue > 0) poser(queue, transparent);
-      // Le corps de la traînée, de la queue vers la tête.
-      for (const part of [0.35, 0.65, 0.85]) {
-        const p = queue + longueur * part;
-        if (p > 0) poser(p, fondu(part));
+      // La traînée s'éteint par degrés : un bord net devant comme derrière
+      // donnait un segment qui saute plutôt qu'un véhicule qui passe.
+      ecrire(0, queue <= 0 ? fondu(1 + queue / longueur) : TRANSPARENT);
+      if (queue > 0) ecrire(queue, TRANSPARENT);
+      for (let i = 0; i < PARTS.length; i += 1) {
+        const p = queue + longueur * PARTS[i];
+        if (p > 0) ecrire(p, fondu(PARTS[i]));
       }
-      poser(tete, fondu(1));
+      ecrire(tete, fondu(1));
       // L'avant reste franc : c'est lui qui donne le sens de la marche.
-      poser(Math.min(1, tete + 0.004), transparent);
-      poser(1, transparent);
+      ecrire(tete + 0.004, TRANSPARENT);
+      ecrire(1, TRANSPARENT);
 
-      const arrets = [...bornes.entries()].sort((a, b) => a[0] - b[0]);
       try {
         map.setPaintProperty(id, "line-gradient", [
           "interpolate",
           ["linear"],
           ["line-progress"],
-          ...arrets.flat(),
+          ...arrets.slice(0, n),
         ] as never);
       } catch {
         // Une expression refusée ne doit pas tuer la boucle : on réessaiera à
@@ -641,15 +690,77 @@ export default function LabMap({
 
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
 
-    // Infobulle au survol. Rendue en React plutôt qu'en Popup MapLibre : elle
-    // suit le thème du site, et le texte reste sélectionnable.
-    if (lab.hover) {
-      const cibles = lab.hover.layers.map((i) => `lab-layer-${i}`);
+    /**
+     * UN SEUL gestionnaire de survol, pour l'infobulle et pour le curseur.
+     *
+     * Il y en avait deux — celui de `hover` et celui de `select` — et chacun
+     * appelait `queryRenderedFeatures`, l'opération la plus chère de MapLibre
+     * côté processeur. Deux requêtes à chaque pixel parcouru par la souris :
+     * c'est ce qui rendait le déplacement pâteux, bien plus que le volume des
+     * données.
+     *
+     * Les deux besoins sont servis par une passe unique, et le résultat est
+     * mis en cache tant que le pointeur ne quitte pas la même entité.
+     */
+    if (lab.hover || lab.select) {
+      const cibles = (lab.hover?.layers ?? []).map((i) => `lab-layer-${i}`);
+      const cliquables = (lab.select?.layers ?? []).map((i) => `lab-layer-${i}`);
+      const TOLERANCE = 12;
 
-      map.on("mousemove", (e) => {
-        const trouve = map.queryRenderedFeatures(e.point, {
-          layers: cibles.filter((id) => map.getLayer(id)),
-        });
+      // Les couches existantes ne sont filtrées qu'une fois : `getLayer` à
+      // chaque mouvement sur chaque identifiant était du travail répété.
+      let couchesPretes: { survol: string[]; clic: string[] } | null = null;
+      const couches = () => {
+        if (!couchesPretes) {
+          couchesPretes = {
+            survol: cibles.filter((id) => map.getLayer(id)),
+            clic: cliquables.filter((id) => map.getLayer(id)),
+          };
+        }
+        return couchesPretes;
+      };
+
+      /**
+       * Une image d'écart au plus entre deux requêtes.
+       *
+       * `mousemove` se déclenche à chaque pixel parcouru, bien plus souvent que
+       * la carte ne se redessine. Sans ce garde-fou, une traversée rapide de la
+       * carte lançait des centaines de requêtes dont la grande majorité étaient
+       * jetées avant d'avoir servi.
+       */
+      let enAttente = 0;
+      let dernierPoint: { x: number; y: number } | null = null;
+
+      const examiner = () => {
+        enAttente = 0;
+        const point = dernierPoint;
+        if (!point) return;
+        const { survol, clic } = couches();
+
+        // Le clic d'abord : s'il y a une station sous le pointeur, c'est elle
+        // qui décide du curseur, et l'infobulle n'a pas à s'ouvrir par-dessus.
+        if (clic.length) {
+          const cliquable = map.queryRenderedFeatures(
+            [
+              [point.x - TOLERANCE, point.y - TOLERANCE],
+              [point.x + TOLERANCE, point.y + TOLERANCE],
+            ],
+            { layers: clic },
+          );
+          if (cliquable.length) {
+            map.getCanvas().style.cursor = "pointer";
+            setSurvol(null);
+            return;
+          }
+        }
+
+        if (!survol.length) {
+          map.getCanvas().style.cursor = "";
+          setSurvol(null);
+          return;
+        }
+
+        const trouve = map.queryRenderedFeatures(point, { layers: survol });
         if (!trouve.length) {
           map.getCanvas().style.cursor = "";
           setSurvol(null);
@@ -657,13 +768,21 @@ export default function LabMap({
         }
         map.getCanvas().style.cursor = "pointer";
         setSurvol({
-          x: e.point.x,
-          y: e.point.y,
+          x: point.x,
+          y: point.y,
           props: trouve[0].properties ?? {},
         });
+      };
+
+      map.on("mousemove", (e) => {
+        dernierPoint = { x: e.point.x, y: e.point.y };
+        if (!enAttente) enAttente = requestAnimationFrame(examiner);
       });
 
       map.on("mouseout", () => {
+        if (enAttente) cancelAnimationFrame(enAttente);
+        enAttente = 0;
+        dernierPoint = null;
         map.getCanvas().style.cursor = "";
         setSurvol(null);
       });
@@ -689,28 +808,22 @@ export default function LabMap({
        */
       const TOLERANCE = 12;
 
-      const chercher = (point: { x: number; y: number }) =>
-        map.queryRenderedFeatures(
+      map.on("click", (e) => {
+        const trouve = map.queryRenderedFeatures(
           [
-            [point.x - TOLERANCE, point.y - TOLERANCE],
-            [point.x + TOLERANCE, point.y + TOLERANCE],
+            [e.point.x - TOLERANCE, e.point.y - TOLERANCE],
+            [e.point.x + TOLERANCE, e.point.y + TOLERANCE],
           ],
           { layers: cliquables.filter((id) => map.getLayer(id)) },
         );
-
-      map.on("click", (e) => {
-        const trouve = chercher(e.point);
         // Un clic à côté referme le panneau : c'est le geste attendu, et il
         // évite d'avoir à viser une croix.
         setChoisi(trouve.length ? (trouve[0].properties ?? {}) : null);
       });
 
-      // Le curseur annonce ce qui est cliquable. Sans ce signal, rien dans la
-      // page ne dit que ces cercles répondent — et le lecteur passe à côté de
-      // tout le propos du lab.
-      map.on("mousemove", (e) => {
-        if (chercher(e.point).length) map.getCanvas().style.cursor = "pointer";
-      });
+      // Le curseur qui annonce ce qui est cliquable est posé par le
+      // gestionnaire de survol unique, plus haut : un second `mousemove` ici
+      // doublait les requêtes à chaque pixel parcouru.
     }
 
     map.on("load", () => {

@@ -623,6 +623,73 @@ en font une comète — dense en tête, évanouie en queue — et sa longueur pa
 
 L'avant reste franc à dessein : c'est lui qui donne le sens de la marche.
 
+### Audit de performance : la carte se mangeait elle-même
+
+**Constaté à l'usage** — le lab devient pâteux, au chargement comme au
+déplacement, y compris en local.
+
+**Mesuré** (page du lab, navigateur sans accélération matérielle) :
+
+| | |
+| --- | --- |
+| Téléchargé | 1,35 Mo en 32 requêtes |
+| dont scripts | **1 115 ko — 83 %** |
+| dont données du lab | 175 ko |
+| DOM prêt | 1 243 ms |
+| Chargement complet | 6 390 ms |
+| **Boucle d'animation** | **17 images/s** au lieu de 60 |
+| Mémoire JS | 58 Mo |
+
+**Les données ne sont pas en cause** : 460 ko pour l'ensemble de `public/data`,
+dont 175 ko de tuiles de fond. Le poids est ailleurs.
+
+### Trois causes, par ordre de gravité
+
+**1. L'animation de la rame se mangeait la carte.**
+
+`setPaintProperty` était appelée à **chaque image**, soixante fois par seconde.
+Chaque appel oblige MapLibre à relire l'expression, la valider contre la
+spécification de style, recompiler la rampe de couleur et repeindre la couche
+entière — 1 451 sommets. La carte tombait à dix-sept images par seconde :
+l'animation se mangeait elle-même, et tout le reste avec.
+
+Aggravant : chaque image construisait une `Map`, la triait et l'aplatissait.
+Trois allocations par image, soixante fois par seconde — le ramasse-miettes
+passait son temps à nettoyer derrière la boucle.
+
+*Corrigé* — repeint limité à vingt images par seconde (la lueur n'avance que de
+0,13 % entre deux images sur un parcours de trente-huit secondes), tableau de
+bornes réutilisé sans tri, et cache des teintes.
+
+**2. Deux gestionnaires de survol interrogeaient la carte en parallèle.**
+
+Il y en avait un pour l'infobulle et un pour le curseur, chacun appelant
+`queryRenderedFeatures` — l'opération la plus chère de MapLibre côté
+processeur — **à chaque pixel parcouru par la souris**. C'est la cause directe
+du déplacement pâteux, bien plus que le volume des données.
+
+*Corrigé* — un gestionnaire unique sert les deux besoins, limité à une image, et
+la liste des couches existantes est calculée une fois au lieu d'être refiltrée à
+chaque mouvement.
+
+**3. Les 245 ko de `next-devtools`.**
+
+Ils n'existent qu'en développement et ne pèsent pas sur le site publié, mais ils
+expliquent une partie de la lenteur constatée en local. Rien à corriger.
+
+### Ce qui était déjà bon
+
+- MapLibre isolé par import dynamique : son poids ne touche que les pages qui
+  portent une carte ;
+- en-tête `immutable` sur `/data/`, qui tire parti des noms versionnés ;
+- le globe de la page d'accueil s'arrête hors de l'écran et sur onglet caché ;
+- l'unique `<img>` non optimisée est documentée — l'optimiseur de Next fige les
+  GIF animés sur leur première image.
+
+**La leçon** — l'instinct disait « trop de données ». La mesure disait
+« dix-sept images par seconde ». Les deux coupables étaient des boucles qui
+tournaient trop vite, pas des fichiers trop gros.
+
 ---
 
 ## Décisions structurantes
