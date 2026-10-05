@@ -717,6 +717,61 @@ d'une requête : en développement, ajouter une entrée se voit toujours au
 rechargement suivant. Ce n'est pas un cache de contenu, c'est la suppression
 d'un travail refait pour rien dans le même rendu.
 
+### Montrer les rues, pas seulement l'enveloppe
+
+**Fait** — les rues réellement parcourues sont exportées, un fichier par
+station, chargé au clic.
+
+**Pourquoi** — l'aire de marche est une enveloppe : elle dit jusqu'où l'on va,
+pas par où. Les rues montrent le calcul lui-même. On y voit la marche progresser
+le long de quelques axes avant de remplir les quartiers, et surtout **pourquoi**
+la forme se coupe — les rues s'arrêtent devant la falaise, la rivière,
+l'autoroute. L'enveloppe, elle, ne dit que le résultat.
+
+**Ce qui rendait la chose possible sans rien recalculer** — le script
+construisait déjà ces segments pour les envelopper, puis les jetait. La donnée
+existait ; elle n'était pas exportée.
+
+**Un seul jeu pour tous les paliers.** Chaque tronçon porte `m`, la distance à
+laquelle la marche l'atteint. Le lab filtre sur ce champ — à 4,2 km/h, une
+minute vaut 70 m — et l'apparition progressive sort du filtre, sans données
+supplémentaires. C'est la **vérité du calcul**, pas un effet : les rues
+surgissent dans l'ordre réel où on les parcourt.
+
+**Le poids, et trois essais pour le tenir :**
+
+| Réglage | Poids |
+| --- | --- |
+| Tranches de 50 m | 452 ko — 55 % des tronçons à deux sommets |
+| Tranches de 150 m + simplification à 4 m | **269 ko** |
+| `linemerge` avant `unary_union` | inchangé — les rues sont réellement fragmentées dans OSM |
+
+**269 à 300 ko par station**, contre huit mégaoctets si on servait les
+vingt-neuf d'avance. D'où le chargement à la demande, nouveau dans le
+vocabulaire (`onDemand`), avec mise en cache : revenir sur une station déjà vue
+ne recharge rien.
+
+*Vérifié* — avant le clic, aucun fichier de rues n'est demandé ; au clic, un
+seul part.
+
+### L'onde qui marque le passage d'un palier
+
+**Fait** — quand le curseur monte, le contour de la nouvelle aire s'épaissit
+brusquement puis revient à son repos pendant que la tache grandit.
+
+**Pourquoi pas une interpolation de formes** — un morphing entre le polygone de
+trois minutes et celui de cinq demanderait d'apparier des contours qui n'ont ni
+le même nombre de sommets ni la même topologie — l'un a deux trous, l'autre
+quatre. Beaucoup de code pour un résultat fragile.
+
+On anime donc **l'épaisseur et l'opacité du contour**, ce qui suffit à faire
+lire un anneau qui avance vers l'extérieur là où un changement de forme se
+verrait comme un saut. Montée vive sur le premier quart, retour doux sur le
+reste.
+
+**Deux garde-fous** — l'onde ne se joue que vers le HAUT (la jouer à l'envers
+mentirait sur le geste), et `prefers-reduced-motion` la supprime.
+
 ---
 
 ## Décisions structurantes

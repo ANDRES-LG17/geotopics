@@ -89,11 +89,30 @@ def portee_m(minutes):
 #: tache qui recolle les trous qu'on veut montrer.
 COULOIR_M = 40
 
-#: Tolérance de simplification du polygone final, en mètres.
+#: Tolérance de simplification du polygone, en mètres.
 #:
-#: Prudente à dessein : simplifier une isochrone coupe d'abord ses extrémités
-#: fines — les rues qui s'enfoncent le plus loin — c'est-à-dire l'information.
-SIMPLIFICATION_M = 8
+#: 3 m, et non 8 comme dans la première version. La simplification n'est plus
+#: là pour donner la forme — c'est le lissage qui s'en charge — mais seulement
+#: pour retirer les sommets que le tampon pose en double. Une tolérance trop
+#: large coupait les extrémités fines, c'est-à-dire les rues qui s'enfoncent le
+#: plus loin : l'information même.
+SIMPLIFICATION_M = 3
+
+#: Itérations de lissage de Chaikin appliquées au contour.
+#:
+#: Deux suffisent à faire disparaître les angles du tampon. Une troisième
+#: quadruplerait encore les sommets pour une différence qu'on ne voit pas à
+#: l'écran.
+LISSAGE_ITERATIONS = 2
+
+#: Aire minimale d'un trou conservé, en mètres carrés.
+#:
+#: Mesuré sur l'aire de quinze minutes de Saint-Roch : vingt trous, dont seize
+#: de moins de 0,3 ha. Ces seize occupaient 0,2 % de la surface et coûtaient
+#: 41 % de sommets en plus — des interstices entre îlots, pas une information.
+#: Les plus grands restent : une cour fermée ou un faisceau ferroviaire dit
+#: quelque chose.
+TROU_MIN_M2 = 3000
 
 #: Nombre de décimales des coordonnées exportées. 4 ≈ 11 m à cette latitude.
 #: C'est la règle de `public/data/README.md` : au-delà on transporte une
@@ -212,11 +231,197 @@ def isochrones(graphe, depart, paliers=PALIERS_MIN):
             resultats.append((minutes, None, 0.0))
             continue
 
-        forme = unary_union(segments).buffer(COULOIR_M, resolution=8)
+        # `resolution=16` plutôt que 8 : le tampon arrondit les bouts de rue en
+        # seize facettes au lieu de huit. C'est là que la douceur commence —
+        # lisser un contour déjà facetté revient à polir une pièce mal coulée.
+        forme = unary_union(segments).buffer(COULOIR_M, resolution=16)
+
+        # Les interstices entre îlots partent avant le lissage : les lisser
+        # serait du travail perdu, et ils hachent le contour.
+        forme = nettoyer_trous(forme, TROU_MIN_M2)
+
+        # Simplification légère — 3 m au lieu de 8. Elle n'est plus là pour
+        # donner la forme mais pour retirer les sommets que le tampon a posés
+        # en double ; c'est le lissage qui décide du dessin.
         forme = forme.simplify(SIMPLIFICATION_M, preserve_topology=True)
+
+        forme = lisser_contour(forme, LISSAGE_ITERATIONS)
         resultats.append((minutes, forme, metres_de_rue))
 
     return resultats
+
+
+def lisser_contour(forme, iterations=2):
+    """Adoucit les angles d'un polygone par la méthode de Chaikin.
+
+    POURQUOI — l'aire de marche sort d'un `buffer` autour de segments de rue,
+    puis d'un `simplify`. Le premier produit des facettes, le second **retire**
+    des sommets et laisse des angles droits : la forme obtenue a des bords
+    hachés que rien ne justifie. Une aire de marche n'a pas de contour réel —
+    c'est une frontière de calcul, et la dessiner anguleuse lui prête une
+    précision qu'elle n'a pas.
+
+    Chaikin remplace chaque sommet par deux points au quart et aux trois quarts
+    du segment. La courbe obtenue **frôle** les sommets au lieu de les
+    traverser, ce qui arrondit sans déplacer la frontière de plus de quelques
+    mètres — bien moins que l'incertitude de la méthode elle-même.
+
+    Les anneaux intérieurs sont lissés aussi : un trou anguleux au milieu d'une
+    forme douce se remarque immédiatement.
+    """
+    from shapely.geometry import Polygon, MultiPolygon
+
+    def lisser_anneau(coords):
+        points = list(coords)
+        # Un anneau est fermé : on retire la répétition avant de lisser, et on
+        # referme à la fin.
+        if points[0] == points[-1]:
+            points = points[:-1]
+        if len(points) < 4:
+            return coords
+
+        for _ in range(iterations):
+            suivant = []
+            for i in range(len(points)):
+                a = points[i]
+                b = points[(i + 1) % len(points)]
+                suivant.append((a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25))
+                suivant.append((a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75))
+            points = suivant
+
+        return points + [points[0]]
+
+    def lisser_polygone(poly):
+        exterieur = lisser_anneau(list(poly.exterior.coords))
+        trous = [lisser_anneau(list(t.coords)) for t in poly.interiors]
+        lisse = Polygon(exterieur, trous)
+        return lisse if lisse.is_valid else lisse.buffer(0)
+
+    if isinstance(forme, MultiPolygon):
+        return MultiPolygon([lisser_polygone(p) for p in forme.geoms])
+    return lisser_polygone(forme)
+
+
+def nettoyer_trous(forme, aire_min_m2=3000):
+    """Retire les trous minuscules d'un polygone.
+
+    MESURÉ sur l'aire de quinze minutes de Saint-Roch : vingt trous, dont seize
+    de moins de 0,3 ha. Ces seize occupaient **0,2 % de la surface** et
+    coûtaient **41 % de sommets en plus**. Ce sont des interstices entre îlots,
+    pas une information : ils hachent le contour sans rien apprendre.
+
+    Les grands trous restent — une cour fermée, un parc qu'on contourne, un
+    faisceau ferroviaire : ceux-là disent quelque chose.
+    """
+    from shapely.geometry import Polygon, MultiPolygon
+
+    def nettoyer_polygone(poly):
+        gardes = [t for t in poly.interiors if Polygon(t).area >= aire_min_m2]
+        return Polygon(poly.exterior, gardes)
+
+    if isinstance(forme, MultiPolygon):
+        return MultiPolygon([nettoyer_polygone(p) for p in forme.geoms])
+    return nettoyer_polygone(forme)
+
+
+def rues_atteintes(graphe, depart, portee_max):
+    """Les rues parcourues, chacune portant la distance à laquelle on l'atteint.
+
+    POURQUOI LES EXPORTER — l'aire de marche est une enveloppe : elle dit
+    jusqu'où l'on va, pas par où. Les rues, elles, montrent le calcul lui-même.
+    On y voit la marche progresser le long de quelques axes avant de remplir les
+    quartiers, et surtout on voit **pourquoi** la forme se coupe : les rues
+    s'arrêtent devant la falaise, le fleuve et l'autoroute.
+
+    UN SEUL JEU POUR TOUS LES PALIERS. Chaque segment porte `m`, la distance à
+    laquelle la marche l'atteint. Le lab n'a donc pas besoin de six copies : il
+    filtre sur ce champ, et une animation de seuil fait apparaître les rues dans
+    l'ordre où on les parcourt — ce qui est la vérité du calcul, pas un effet.
+
+    Les segments sont regroupés par tranches de distance avant d'être fusionnés :
+    sans cela, chaque arête du graphe deviendrait une entité, et le fichier
+    tripler ait pour la même image.
+    """
+    atteints = nx.single_source_dijkstra_path_length(
+        graphe, depart, cutoff=portee_max, weight="poids"
+    )
+
+    # Tranches de 150 m.
+    #
+    # Un premier essai à 50 m donnait 2 600 tronçons dont 55 % n'avaient que
+    # deux sommets : la tranche coupait les rues plus vite que `linemerge` ne
+    # pouvait les recoller, et le fichier pesait 452 ko. Des tranches trois fois
+    # plus larges laissent les rues entières se fondre en une seule ligne.
+    #
+    # Ce qu'on perd : la granularité de l'animation. À 4,2 km/h, 150 m valent
+    # un peu plus de deux minutes de marche — soit un palier du curseur. C'est
+    # exactement la finesse utile, puisque le lecteur ne demande jamais mieux.
+    PAS = 150
+    par_tranche = defaultdict(list)
+
+    for a, b, donnees in graphe.edges(data=True):
+        da, db = atteints.get(a), atteints.get(b)
+        if da is None and db is None:
+            continue
+
+        if da is not None and db is not None:
+            # La distance retenue est la plus GRANDE des deux : c'est le moment
+            # où le segment est entièrement parcouru.
+            distance = max(da, db)
+            par_tranche[int(distance // PAS)].append(LineString([a, b]))
+            continue
+
+        proche = a if da is not None else b
+        loin = b if da is not None else a
+        reste = portee_max - atteints[proche]
+        if reste <= 0:
+            continue
+        part = min(1.0, reste / donnees["poids"])
+        bout = (
+            proche[0] + (loin[0] - proche[0]) * part,
+            proche[1] + (loin[1] - proche[1]) * part,
+        )
+        distance = atteints[proche] + donnees["poids"] * part
+        par_tranche[int(distance // PAS)].append(LineString([proche, bout]))
+
+    from shapely.ops import linemerge
+
+    entites = []
+    for tranche in sorted(par_tranche):
+        # `linemerge` AVANT `unary_union` : l'union fusionne les géométries mais
+        # laisse les segments distincts, et c'est le merge qui recolle une rue
+        # droite en une seule ligne au lieu de quinze. Dans l'autre ordre, 78 %
+        # des tronçons ressortaient à deux sommets.
+        try:
+            fusion = linemerge(par_tranche[tranche])
+        except Exception:
+            fusion = unary_union(par_tranche[tranche])
+
+        geometries = (
+            list(fusion.geoms) if hasattr(fusion, "geoms") else [fusion]
+        )
+        for geo in geometries:
+            # Les segments très courts sont du bruit : des bouts de trottoir
+            # entre deux intersections, invisibles à l'échelle où on regarde.
+            if geo.is_empty or geo.length < 12:
+                continue
+            # Simplification à 4 m. Une rue vue d'avion n'a pas besoin de ses
+            # courbures au mètre près, et c'est ici que le poids se joue : le
+            # fichier porte des dizaines de milliers de sommets.
+            geo = geo.simplify(4, preserve_topology=False)
+            if geo.is_empty:
+                continue
+            entites.append({
+                "type": "Feature",
+                "properties": {
+                    "couche": "rue",
+                    # Distance en mètres à laquelle la marche atteint ce segment.
+                    "m": (tranche + 1) * PAS,
+                },
+                "geometry": mapping(vers_wgs(geo)),
+            })
+
+    return entites
 
 
 def charger_population(chemin_geo, chemin_pop):
@@ -323,6 +528,41 @@ def main():
             continue
 
         print(f"\n  {station['nom']}  (accroche {ecart:.0f} m)")
+
+        # Les rues parcourues, dans un fichier par station : le lab les charge
+        # au clic plutôt que de faire télécharger les vingt-neuf à qui n'en
+        # regarde qu'une.
+        rues = rues_atteintes(graphe, depart, portee_m(max(PALIERS_MIN)))
+        cle = (
+            station["nom"].lower()
+            .replace("'", "").replace(" ", "-")
+            .replace("é", "e").replace("è", "e").replace("ê", "e")
+            .replace("à", "a").replace("ô", "o").replace("û", "u")
+            .replace("ç", "c")
+        )
+        chemin_rues = os.path.join(
+            RACINE, "public", "data", f"tramway-rues-{cle}-v1.geojson"
+        )
+        with open(chemin_rues, "w", encoding="utf-8") as f:
+            json.dump({
+                "type": "FeatureCollection",
+                "metadata": {
+                    "titre": f"Rues atteintes à pied depuis {station['nom']}",
+                    "script": "scripts/analysis/tramway-isochrones.py",
+                    "station": station["nom"],
+                    "vitesse_kmh": VITESSE_KMH,
+                    "methode": (
+                        "Chaque segment porte `m`, la distance à laquelle la "
+                        "marche l'atteint. Filtrer sur ce champ donne n'importe "
+                        "quel palier de temps : m ≤ vitesse × minutes."
+                    ),
+                    "source": "OpenStreetMap (ODbL)",
+                },
+                "features": rues,
+            }, f, ensure_ascii=False)
+        poids_rues = os.path.getsize(chemin_rues) / 1024
+        print(f"    rues : {len(rues)} tronçons · {poids_rues:.0f} ko → {os.path.basename(chemin_rues)}")
+
         for minutes, forme, metres in isochrones(graphe, depart):
             if forme is None or forme.is_empty:
                 print(f"    {minutes:2d} min : vide")

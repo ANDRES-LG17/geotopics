@@ -33,6 +33,15 @@ import {
 const BACKGROUND_LAYER = "lab-background";
 
 /**
+ * Les fichiers déjà chargés à la demande, gardés pour la session.
+ *
+ * Hors du composant : un lecteur qui revient sur une station déjà consultée ne
+ * doit pas la retélécharger, même après que la carte a été démontée et
+ * remontée.
+ */
+const cacheDemande = new Map<string, unknown>();
+
+/**
  * MapLibre 6 charge son worker comme un module séparé, dont il résout l'URL
  * depuis `import.meta.url`. Sous Turbopack, cette URL pointe vers
  * `/_next/static/chunks/`, où le bundler n'a pas copié le fichier : le serveur
@@ -359,13 +368,39 @@ export default function LabMap({
     const select = lab.select;
     if (!map || !select?.revealLayers?.length) return;
 
+    const seuil = select.onDemand?.threshold;
+    const sourceDemande = select.onDemand?.source;
+
     const appliquer = () => {
       for (const index of select.revealLayers ?? []) {
         const id = `lab-layer-${index}`;
-        if (!map.getLayer(id)) continue;
+        const couche = map.getLayer(id);
+        if (!couche) continue;
 
         if (!choisi) {
           map.setFilter(id, ["==", ["literal", false], true]);
+          continue;
+        }
+
+        /**
+         * Les données chargées à la demande se filtrent autrement.
+         *
+         * Elles ne portent ni la clé de l'entité — le fichier entier lui
+         * appartient — ni le champ du curseur. Les rues d'une aire de marche
+         * portent une DISTANCE là où le curseur compte des minutes, et le
+         * filtre est un `<=` : une rue atteinte en trois minutes l'est encore
+         * à quinze.
+         */
+        if (sourceDemande && couche.source === sourceDemande) {
+          if (seuil && select.slider && palierCourant !== null) {
+            map.setFilter(id, [
+              "<=",
+              ["get", seuil.field],
+              palierCourant * seuil.scale,
+            ] as never);
+          } else {
+            map.setFilter(id, null);
+          }
           continue;
         }
 
@@ -429,6 +464,123 @@ export default function LabMap({
   useEffect(() => {
     onSelection?.(choisi, donneesPanneau);
   }, [choisi, donneesPanneau, onSelection]);
+
+  /**
+   * L'onde qui marque le passage d'un palier au suivant.
+   *
+   * Le contour de la nouvelle forme surgit, brille, puis revient à son
+   * épaisseur de repos pendant que la tache grandit. On lit un anneau qui
+   * avance vers l'extérieur, là où un simple changement de forme se verrait
+   * comme un saut.
+   *
+   * On anime l'ÉPAISSEUR et l'OPACITÉ du contour, pas la géométrie : les formes
+   * sont précalculées et discrètes, et les interpoler demanderait d'apparier
+   * des contours qui n'ont ni le même nombre de sommets ni la même topologie.
+   */
+  const palierPrecedent = useRef<number | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    const onde = lab.select?.slider?.wave;
+    if (!map || !onde || palierCourant === null) return;
+
+    const avant = palierPrecedent.current;
+    palierPrecedent.current = palierCourant;
+
+    // Rien à marquer si le palier n'a pas bougé, ou s'il a baissé : l'onde dit
+    // une expansion, et la jouer à l'envers mentirait sur le geste.
+    if (avant === null || palierCourant <= avant) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const id = `lab-layer-${onde.layer}`;
+    if (!map.getLayer(id)) return;
+
+    const duree = onde.duration ?? 450;
+    const epaisseurMax = onde.width ?? 6;
+    const repos = 2;
+    const debut = performance.now();
+    let image = 0;
+
+    const animer = (temps: number) => {
+      const t = Math.min(1, (temps - debut) / duree);
+      // Montée vive, retour doux : l'anneau surgit puis se retire.
+      const force = t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75;
+      try {
+        map.setPaintProperty(
+          id,
+          "line-width",
+          repos + (epaisseurMax - repos) * force,
+        );
+        map.setPaintProperty(id, "line-opacity", 0.85 + 0.15 * force);
+      } catch {
+        // Une couche retirée en cours d'animation ne doit pas faire tomber la
+        // carte : on laisse la boucle s'achever d'elle-même.
+      }
+      if (t < 1) image = requestAnimationFrame(animer);
+    };
+    image = requestAnimationFrame(animer);
+
+    return () => cancelAnimationFrame(image);
+  }, [palierCourant, lab.select]);
+
+  /**
+   * Les données propres à l'entité choisie, chargées au clic.
+   *
+   * Les rues parcourues depuis une station pèsent près de 300 ko : les servir
+   * pour vingt-neuf stations ferait télécharger huit mégaoctets à qui n'en
+   * regarde qu'une. La source est donc alimentée à la demande, et son contenu
+   * gardé en mémoire — revenir sur une station déjà vue ne recharge rien.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    const aLaDemande = lab.select?.onDemand;
+    if (!map || !aLaDemande || !lab.select) return;
+
+    const valeur = choisi?.[lab.select.key];
+    const source = () =>
+      map.getSource(aLaDemande.source) as
+        | { setData: (d: unknown) => void }
+        | undefined;
+
+    const vide = { type: "FeatureCollection", features: [] };
+    if (valeur === undefined || valeur === null) {
+      source()?.setData(vide);
+      return;
+    }
+
+    // L'identifiant du fichier : minuscules, sans accents ni apostrophes — la
+    // même règle que celle du script qui les écrit.
+    const cle = String(valeur)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/['’]/g, "")
+      .replace(/\s+/g, "-");
+
+    let annule = false;
+    const url = aLaDemande.url.replace("{clé}", cle);
+
+    const dejaLu = cacheDemande.get(url);
+    if (dejaLu) {
+      source()?.setData(dejaLu);
+      return;
+    }
+
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (annule || !data) return;
+        cacheDemande.set(url, data);
+        source()?.setData(data);
+      })
+      .catch(() => {
+        // Un fichier absent n'est pas une panne : la station n'a simplement pas
+        // encore ses rues. La carte garde tout le reste.
+      });
+
+    return () => {
+      annule = true;
+    };
+  }, [choisi, lab.select]);
 
   /**
    * La lueur qui parcourt la ligne.
@@ -952,6 +1104,16 @@ export default function LabMap({
           // `line-gradient`, et calculée seulement sur demande : c'est un
           // travail de plus à chaque tuile.
           ...(config.lineMetrics ? { lineMetrics: true } : {}),
+        });
+      }
+
+      // La source alimentée au clic naît vide : ses couches existent dès le
+      // départ — sinon il faudrait les ajouter après coup, et leur ordre de
+      // peinture dépendrait du moment du premier clic.
+      if (lab.select?.onDemand) {
+        map.addSource(lab.select.onDemand.source, {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
         });
       }
 

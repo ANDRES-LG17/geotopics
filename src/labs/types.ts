@@ -480,6 +480,44 @@ export type LabDefinition = {
      */
     empty?: Bilingual;
     /**
+     * Données chargées seulement pour l'entité choisie.
+     *
+     * POURQUOI À LA DEMANDE — les rues parcourues à pied depuis une station
+     * pèsent près de 300 ko. Les servir pour vingt-neuf stations ferait
+     * télécharger huit mégaoctets à qui n'en regarde qu'une. La carte s'ouvre
+     * donc légère, et ne va chercher que ce que le lecteur demande.
+     *
+     * `url` porte un gabarit où `{clé}` est remplacé par la valeur de `key` de
+     * l'entité, mise en minuscules et débarrassée de ses accents — ex.
+     * `/data/tramway-rues-{clé}-v1.geojson`.
+     *
+     * Le fichier est gardé en mémoire après son premier chargement : revenir
+     * sur une station déjà vue ne coûte rien.
+     */
+    onDemand?: {
+      /** Clé de la source créée à la volée, référencée par les couches. */
+      source: string;
+      /** Gabarit d'URL, avec `{clé}` à la place de l'identifiant. */
+      url: string;
+      /**
+       * Comment le palier du curseur filtre ces données.
+       *
+       * Les entités chargées à la demande ne portent pas forcément le champ du
+       * curseur : les rues d'une aire de marche portent une DISTANCE, là où le
+       * curseur compte des minutes. `field` nomme leur champ, et `scale`
+       * convertit — à 4,2 km/h, une minute vaut 70 m.
+       *
+       * Le filtre est un `<=` et non une égalité : une rue atteinte en trois
+       * minutes l'est encore à quinze.
+       */
+      threshold?: {
+        /** Champ des entités à comparer, ex. `"m"`. */
+        field: string;
+        /** Facteur appliqué au palier du curseur avant comparaison. */
+        scale: number;
+      };
+    };
+    /**
      * Couches qui ne se dessinent que pour l'entité choisie.
      *
      * Elles restent vides tant que rien n'est sélectionné : c'est ce qui évite
@@ -515,6 +553,30 @@ export type LabDefinition = {
       label: Bilingual;
       /** Unité affichée après la valeur, ex. « min ». */
       suffix?: string;
+      /**
+       * Onde qui marque le passage d'un palier au suivant.
+       *
+       * Quand le lecteur monte le curseur, le contour de la NOUVELLE forme
+       * surgit, brille, puis s'estompe pendant que la tache grandit. On lit un
+       * anneau qui avance vers l'extérieur plutôt qu'une forme qui change d'un
+       * coup.
+       *
+       * Les formes sont précalculées et discrètes : ce n'est pas une
+       * interpolation entre deux polygones — un morphing demanderait d'apparier
+       * des contours qui n'ont ni le même nombre de sommets ni la même
+       * topologie. C'est l'opacité du contour qu'on anime, ce qui suffit à
+       * donner le mouvement.
+       *
+       * Ignorée quand le système demande moins de mouvement.
+       */
+      wave?: {
+        /** Indice de la couche de contour à faire pulser. */
+        layer: number;
+        /** Durée de l'onde, en millisecondes. */
+        duration?: number;
+        /** Épaisseur de l'anneau à son maximum, en pixels. */
+        width?: number;
+      };
     };
   };
   /** Légende affichée sous la carte. Sans elle, les couleurs ne disent rien. */

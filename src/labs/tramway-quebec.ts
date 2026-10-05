@@ -111,29 +111,57 @@ const tramwayQuebec: LabDefinition = {
     // ESSAI — deux stations seulement, pour valider la méthode avant de saisir
     // les 29. À remplacer par le jeu complet.
 
-    // A — l'aire de marche de 15 minutes, en aplat.
+    // A — l'aire de marche, en aplat.
     //
     // Ce n'est PAS un disque. La forme suit les rues : elle s'étend dans une
     // trame dense et s'arrête devant une coupure. Mesurée sur Saint-Roch, elle
-    // couvre 62 % de ce qu'un rayon de 1,2 km laisserait croire — le tiers
+    // couvre 68 % de ce qu'un rayon de 1 050 m laisserait croire — le tiers
     // manquant est ce que la falaise, la rivière et l'autoroute retranchent.
     {
       kind: "fill",
       source: "marche",
       filter: ["==", ["get", "couche"], "aire_marche"],
-      color: "#0e7490",
-      opacity: 0.22,
+      color: "#0891b2",
+      opacity: 0.2,
     },
 
-    // B — son contour, qui rend les découpes lisibles.
+    // B — les RUES réellement parcourues, chargées au clic.
+    //
+    // L'aire est une enveloppe : elle dit jusqu'où l'on va, pas par où. Les
+    // rues montrent le calcul lui-même — on y voit la marche progresser le long
+    // de quelques axes avant de remplir les quartiers, et surtout POURQUOI la
+    // forme se coupe : les rues s'arrêtent devant la falaise.
+    //
+    // Chaque tronçon porte `m`, la distance à laquelle on l'atteint. Le palier
+    // du curseur filtre dessus : à 4,2 km/h, dix minutes valent 700 m.
+    {
+      kind: "line",
+      source: "rues",
+      color: "#0e7490",
+      width: [
+        "interpolate",
+        ["exponential", 1.5],
+        ["zoom"],
+        12, 0.6,
+        14, 1.2,
+        16, 2.2,
+        18, 3.5,
+      ],
+      opacity: 0.55,
+      cap: "round",
+      join: "round",
+    },
+
+    // C — le contour de l'aire, qui rend les découpes lisibles.
     {
       kind: "line",
       source: "marche",
       filter: ["==", ["get", "couche"], "aire_marche"],
-      color: "#0e7490",
-      width: 1.5,
-      opacity: 0.7,
+      color: "#155e75",
+      width: 2,
+      opacity: 0.85,
       join: "round",
+      cap: "round",
     },
 
     // 0 — Le tracé à l'air libre, en halo clair.
@@ -437,8 +465,18 @@ const tramwayQuebec: LabDefinition = {
    * choisit parmi des formes écrites, il ne calcule rien dans le navigateur.
    */
   select: {
-    // Indice 7 : la couche des stations.
-    layers: [7],
+    // Indice 8 : la couche des stations.
+    layers: [8],
+    // Les rues parcourues, un fichier par station, chargé au clic : près de
+    // 300 ko chacun, soit huit mégaoctets si on les servait tous d'avance.
+    onDemand: {
+      source: "rues",
+      url: "/data/tramway-rues-{clé}-v1.geojson",
+      // Les rues portent une distance en mètres, le curseur compte des minutes.
+      // À 4,2 km/h, une minute vaut 70 m — c'est le facteur de conversion, et
+      // il doit suivre VITESSE_KMH du script si elle change.
+      threshold: { field: "m", scale: 70 },
+    },
     key: "station",
     title: "nom",
     empty: {
@@ -446,7 +484,9 @@ const tramwayQuebec: LabDefinition = {
       en: "Pick a station to see what it reaches on foot.",
     },
     // Indices 0 et 1 : l'aplat de l'aire de marche et son contour.
-    revealLayers: [0, 1],
+    // 0 = l'aplat de l'aire, 1 = les rues parcourues, 2 = le contour.
+    // Les trois ne se dessinent que pour la station choisie.
+    revealLayers: [0, 1, 2],
     slider: {
       field: "minutes",
       // Le 0 n'a aucune forme calculée — il n'y a rien à atteindre en zéro
@@ -464,6 +504,9 @@ const tramwayQuebec: LabDefinition = {
       start: 0,
       label: { fr: "Durée de marche", en: "Walking time" },
       suffix: " min",
+      // L'onde : le contour de la nouvelle aire surgit puis se retire pendant
+      // que la tache grandit. Indice 2 = le contour de l'aire de marche.
+      wave: { layer: 2, duration: 500, width: 7 },
     },
     rows: [
       {
@@ -495,9 +538,9 @@ const tramwayQuebec: LabDefinition = {
   },
 
   hover: {
-    // Indices : 3 = tracé en surface, 4 = tunnel, 5 = tronçons isolés.
+    // Indices : 4-5 = tracé en surface, 6 = tunnel, 7 = tronçons isolés.
     // L'ordre compte : la première couche qui répond gagne.
-    layers: [3, 4, 5],
+    layers: [4, 5, 6],
     rows: [
       {
         field: "nom",
