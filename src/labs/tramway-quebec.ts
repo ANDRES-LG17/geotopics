@@ -696,38 +696,9 @@ const tramwayQuebec: LabDefinition = {
     },
   },
 
-  legend: [
-    {
-      color: TRAM,
-      label: {
-        fr: "Tracé en surface — 17,5 km relevés",
-        en: "Surface route — 17.5 km surveyed",
-      },
-    },
-    {
-      color: TRAM_SOMBRE,
-      label: {
-        fr: "En tunnel sous la colline — 1,7 km",
-        en: "Tunnelled under the hill — 1.7 km",
-      },
-    },
-    {
-      color: "#9ca3af",
-      label: {
-        fr: "Tronçon incomplet dans OpenStreetMap",
-        en: "Segment incomplete in OpenStreetMap",
-      },
-    },
-    {
-      // La couleur des rues révélées, pas celle de l'aplat : c'est elle que le
-      // lecteur voit apparaître, et donc elle qu'il faut nommer.
-      color: "#ff5a1f",
-      label: {
-        fr: "Rues atteintes à pied depuis la station choisie",
-        en: "Streets reached on foot from the selected station",
-      },
-    },
-  ],
+  // Pas de légende : retirée à la demande, pour une page sans texte autour de
+  // la carte. Les couleurs se lisent par le panneau — la courbe nomme l'aire,
+  // l'anneau ses modes — et le plan reprend la charte officielle de la ligne.
 
   attribution: {
     fr: "Tracé : contributeurs d'OpenStreetMap (ODbL) — relevé le 1ᵉʳ octobre 2026",
