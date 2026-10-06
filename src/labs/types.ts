@@ -34,6 +34,19 @@ export type LabColor =
       /** Couleur des entités qui ne correspondent à aucune valeur. */
       fallback: string;
     }
+  | {
+      /**
+       * Jeton CSS du site, ex. `"--surface-muted"`, avec une couleur de repli.
+       *
+       * À préférer à deux valeurs écrites en dur quand la couche doit se
+       * confondre avec la page : le jeton suit le thème clair ou sombre, et
+       * continue de suivre la charte si elle change. Une paire de hexadécimaux
+       * figée, elle, se décale dès que la page bouge — et c'est invisible
+       * jusqu'à ce qu'on regarde la carte dans l'autre thème.
+       */
+      cssVar: string;
+      fallback: string;
+    }
   | unknown[];
 
 /**
@@ -74,8 +87,32 @@ export type LabHeight =
  * couches que de rendus. Une requête réseau au lieu de trois.
  */
 type LabLayerBase = {
-  /** Clé d'une entrée de `sources`. */
+  /**
+   * Clé d'une entrée de `sources`.
+   *
+   * Peut aussi nommer une source du FOND DE CARTE — `openmaptiles` pour un
+   * style OpenMapTiles. On repeint alors une donnée déjà téléchargée, ce qui ne
+   * coûte aucun octet de plus : le fond porte déjà toutes les rues de la ville,
+   * là où un GeoJSON à nous n'en porterait que ce qu'on a calculé.
+   */
   source: string;
+  /**
+   * Couche interne d'une source vectorielle, ex. `"transportation"`.
+   *
+   * Obligatoire pour une source en tuiles, interdite pour un GeoJSON : une
+   * source GeoJSON n'a qu'un seul jeu d'entités, une source vectorielle en a
+   * plusieurs et il faut dire lequel.
+   */
+  sourceLayer?: string;
+  /**
+   * Bornes de zoom de la couche.
+   *
+   * Utile quand la donnée du fond n'existe pas partout : les chemins piétons
+   * d'OpenMapTiles n'apparaissent qu'à partir du zoom 14, et une couche qui
+   * les demande plus tôt dessine du vide.
+   */
+  minZoom?: number;
+  maxZoom?: number;
   /** Expression MapLibre, ex. `["==", ["get", "couche"], "lac"]`. */
   filter?: unknown[];
 };
@@ -122,49 +159,11 @@ export type LabLayer = LabLayerBase &
       cap?: "butt" | "round" | "square";
       join?: "bevel" | "round" | "miter";
       /**
-       * Largeur du trou central, en pixels — le « casing » des cartes de
-       * transport.
-       *
-       * La ligne se dessine alors comme deux bords de part et d'autre d'un
-       * vide. Posée sous une ligne pleine plus fine, elle lui fait un liseré
-       * net, qui la détache d'un fond chargé mieux qu'un halo flou.
+       * Trait CREUX : deux bords de largeur `width`, séparés par un vide de
+       * `gapWidth`. C'est le tunnel des plans de transport — un contour de la
+       * couleur de la ligne autour d'un intérieur clair.
        */
       gapWidth?: number | unknown[];
-    }
-  | {
-      /**
-       * Une lueur qui parcourt une ligne — un véhicule sur sa voie.
-       *
-       * Le dégradé de `line-gradient` ne peint pas une couleur unie : il
-       * l'étale le long du tracé, de son début à sa fin. En déplaçant à chaque
-       * image la position d'une tache claire dans ce dégradé, on obtient un
-       * point lumineux qui file le long des rails — sans ajouter la moindre
-       * donnée, et sans que rien ne bouge côté géométrie : c'est le GPU qui
-       * repeint.
-       *
-       * TROIS CONTRAINTES, toutes imposées par MapLibre :
-       *
-       *   - la source doit déclarer `lineMetrics: true` ;
-       *   - `line-gradient` est incompatible avec `line-dasharray` — une ligne
-       *     en pointillé ne peut pas porter de dégradé ;
-       *   - la source doit être une ligne CONTINUE. Sur des tronçons séparés,
-       *     la lueur se répète sur chacun au lieu de parcourir l'ensemble.
-       *
-       * Le pas de la géométrie doit être régulier, sinon la lueur paraît
-       * accélérer et ralentir sans raison : ce n'est pas un défaut de
-       * l'animation, c'est la distance réelle entre sommets qui varie.
-       */
-      kind: "pulse";
-      /** Couleur de la lueur. */
-      color: string;
-      /** Largeur du trait, en pixels. */
-      width?: number | unknown[];
-      /** Longueur de la lueur, en fraction de la ligne entière (0 à 1). */
-      length?: number;
-      /** Durée d'un aller complet, en millisecondes. */
-      duration?: number;
-      cap?: "butt" | "round" | "square";
-      join?: "bevel" | "round" | "miter";
     }
   | {
       kind: "circle";
@@ -196,6 +195,22 @@ export type LabLayer = LabLayerBase &
       haloWidth?: number;
       /** Décalage vertical, en multiples de la taille du texte. */
       offsetY?: number;
+      /** Décalage horizontal, en multiples de la taille du texte. */
+      offsetX?: number;
+      /**
+       * Point du texte accroché à l'entité. `"left"` pose le texte À DROITE du
+       * point, comme sur un plan de ligne ; `"center"` (défaut) le centre dessus.
+       */
+      anchor?: "center" | "left" | "right" | "top" | "bottom";
+      /** Police, ex. `"Noto Sans Bold"`. Défaut : `"Noto Sans Regular"`. */
+      font?: string;
+      /**
+       * Laisse les étiquettes se chevaucher. Défaut : `true` — sur cinq
+       * entités, mieux vaut un chevauchement qu'un nom manquant. À `false`
+       * pour une série dense (les 29 stations d'une ligne) : au dézoom, le
+       * moteur masque les noms qui se toucheraient au lieu de les empiler.
+       */
+      allowOverlap?: boolean;
     }
   );
 
@@ -353,11 +368,15 @@ export type LabBasemap =
     };
 
 /**
- * Une ligne d'infobulle ou de panneau.
+ * Une ligne de chiffre, dans l'infobulle comme dans le panneau.
  *
- * Partagée par `hover` et `select` : ce qu'on écrit d'une entité survolée et
- * d'une entité choisie obéit aux mêmes règles, et les décrire deux fois
- * garantirait qu'elles divergent.
+ * `field` nomme une propriété de l'entité ; la ligne disparaît si elle est
+ * absente, ce qui évite d'écrire « undefined » dans une carte.
+ *
+ * Le même type sert les deux parce que la façon de rendre un chiffre ne dépend
+ * pas de l'endroit où on le lit : un pourcentage se lit en barre dans une
+ * infobulle comme dans un panneau, et une série de vingt-cinq ans se lit en
+ * courbe dans les deux.
  */
 export type LabHoverRow = {
   field: string;
@@ -388,26 +407,96 @@ export type LabHoverRow = {
   /**
    * N'affiche la ligne que si une autre propriété vaut cette valeur.
    *
-   * Une même infobulle sert des entités de nature différente : une municipalité
-   * du bassin n'a pas les mêmes champs qu'un lac, ni le même propos qu'une
-   * municipalité desservie. La condition évite d'écrire des lignes qui n'ont
-   * pas de sens pour ce qui est survolé.
+   * Une même infobulle sert des entités de nature différente : une
+   * municipalité du bassin n'a pas les mêmes champs qu'un lac, ni le même
+   * propos qu'une municipalité desservie. La condition évite d'écrire des
+   * lignes qui n'ont pas de sens pour ce qui est survolé.
    */
   when?: { field: string; equals: string | number | boolean };
+};
+
+/**
+ * Tableau de bord d'une entité choisie.
+ *
+ * PRINCIPE — toute valeur s'accompagne d'une comparaison : un chiffre isolé ne
+ * dit pas s'il est élevé ou faible. Le registre est celui d'un rapport, formel
+ * et exact, mais chaque terme technique porte sa définition.
+ *
+ * Les champs se lisent sur trois objets :
+ * - « mesures » : l'entité révélée au palier courant (l'aire de marche) ;
+ * - « série » : toutes les entités révélées de l'entité choisie, une par
+ *   palier — pour les courbes ;
+ * - « ensemble » : toutes les entités cliquables (les 29 stations), lues dans
+ *   la source `headline.compareSource` — pour le rang et la moyenne.
+ */
+export type LabPanelConfig = {
+  /** Statut sous le titre, selon un champ booléen de l'entité choisie. */
+  status?: { field: string; yes: Bilingual; no: Bilingual; color?: string };
+  /** Rang dans la série, ex. « 23 / 29 », depuis un champ de l'entité choisie. */
+  order?: { field: string; total: number };
+  /** Préfixe du titre quand `status.field` est vrai, ex. « Pôle ». */
+  titlePrefix?: Bilingual;
+  /** Le chiffre principal, en grand, avec son rang et la moyenne. */
+  headline?: {
+    /** Champ des mesures, ex. `"population"`. */
+    field: string;
+    label: Bilingual;
+    unit: Bilingual;
+    /**
+     * Source (clé de `sources`) des entités à comparer, et champ qui y porte
+     * la valeur par palier, sous forme de tableau aligné sur `slider.steps`
+     * (sans le palier zéro). Sans eux, ni rang ni moyenne.
+     */
+    compareSource?: string;
+    compareSeries?: string;
+    /**
+     * Phrase de comparaison. Jetons remplacés : `{rang}`, `{total}`,
+     * `{moyenne}` — ex. « {rang}ᵉ sur {total} stations · moyenne de la ligne :
+     * {moyenne} ».
+     */
+    compareText?: Bilingual;
+  };
+  /** Deux courbes par palier : une référence et la valeur mesurée. */
+  curve?: {
+    title: Bilingual;
+    help?: Bilingual;
+    unit: string;
+    /**
+     * Sans graduations : seulement la forme des deux courbes et les bornes de
+     * l'axe du temps. Pour un public large, l'écart entre les courbes dit
+     * l'essentiel ; les valeurs exactes restent dans les indicateurs.
+     */
+    simple?: boolean;
+    reference: { field: string; label: Bilingual; color: string };
+    value: { field: string; label: Bilingual; color: string };
+  };
+  /**
+   * Phrase de synthèse, au registre d'un rapport. Une fonction, parce que la
+   * formulation dépend du profil de l'entité : un obstacle nommé, un seuil.
+   */
+  summary?: (
+    mesures: Record<string, unknown>,
+    entite: Record<string, unknown>,
+    lang: "fr" | "en",
+  ) => string;
+  /** Anneau de parts (en %), la première au centre. */
+  donut?: {
+    title: Bilingual;
+    help?: Bilingual;
+    note?: Bilingual;
+    segments: Array<{ field: string; label: Bilingual; color: string }>;
+  };
+  /** Titre du bloc des indicateurs (`select.rows`). */
+  indicatorsTitle?: Bilingual;
+  /** Méthode et sources, repliées en pied de panneau. */
+  method?: { title: Bilingual; text: Bilingual };
 };
 
 export type LabDefinition = {
   /** Identifiant stable, repris dans le champ `lab` d'une entrée. */
   id: string;
-  /**
-   * Sources de données : clé → chemin public versionné, ex. `/data/x-v1.geojson`.
-   *
-   * La forme longue `{ url, lineMetrics }` ne sert qu'aux sources dont une
-   * couche sera peinte par `line-gradient` : MapLibre doit alors mesurer la
-   * distance parcourue le long de chaque ligne, ce qu'il ne fait pas par
-   * défaut parce que c'est un calcul de plus à chaque tuile.
-   */
-  sources: Record<string, string | { url: string; lineMetrics?: boolean }>;
+  /** Sources de données : clé → chemin public versionné, ex. `/data/x-v1.geojson`. */
+  sources: Record<string, string>;
   layers: LabLayer[];
   view: LabView;
   /**
@@ -443,142 +532,6 @@ export type LabDefinition = {
      */
     position?: [number, number, number];
   };
-  /**
-   * Entités que le lecteur peut choisir d'un clic, et ce qui s'affiche alors.
-   *
-   * POURQUOI UNE SÉLECTION ET PAS UN SURVOL — le survol est fugace : il montre,
-   * puis disparaît. Une sélection persiste, et c'est ce qu'il faut dès que le
-   * lecteur doit AGIR sur ce qu'il a choisi — faire varier une durée, lire
-   * plusieurs chiffres, comparer. Elle fonctionne aussi au doigt, là où le
-   * survol n'existe pas.
-   *
-   * La sélection ouvre un panneau latéral, qui devient une feuille au bas de
-   * l'écran sur téléphone — un panneau de côté n'a pas la place d'exister sous
-   * 640 px.
-   */
-  select?: {
-    /** Indices des couches de `layers` qui répondent au clic. */
-    layers: number[];
-    /**
-     * Propriété qui identifie l'entité choisie, ex. `"station"`.
-     *
-     * Sa valeur sert à filtrer les couches liées : c'est ainsi qu'un clic sur
-     * une station fait apparaître SON aire de marche et pas les autres.
-     */
-    key: string;
-    /** Titre du panneau : la propriété à afficher en tête. */
-    title: string;
-    /** Lignes du panneau, mêmes règles que celles de `hover`. */
-    rows: LabHoverRow[];
-    /**
-     * Phrase affichée dans le panneau tant que rien n'est choisi.
-     *
-     * Le panneau garde sa place dès l'ouverture — sans quoi la carte changerait
-     * de largeur à chaque clic. Cette place vide doit dire ce qu'on attend du
-     * lecteur : rien d'autre dans la page ne lui apprend que ces points
-     * répondent.
-     */
-    empty?: Bilingual;
-    /**
-     * Données chargées seulement pour l'entité choisie.
-     *
-     * POURQUOI À LA DEMANDE — les rues parcourues à pied depuis une station
-     * pèsent près de 300 ko. Les servir pour vingt-neuf stations ferait
-     * télécharger huit mégaoctets à qui n'en regarde qu'une. La carte s'ouvre
-     * donc légère, et ne va chercher que ce que le lecteur demande.
-     *
-     * `url` porte un gabarit où `{clé}` est remplacé par la valeur de `key` de
-     * l'entité, mise en minuscules et débarrassée de ses accents — ex.
-     * `/data/tramway-rues-{clé}-v1.geojson`.
-     *
-     * Le fichier est gardé en mémoire après son premier chargement : revenir
-     * sur une station déjà vue ne coûte rien.
-     */
-    onDemand?: {
-      /** Clé de la source créée à la volée, référencée par les couches. */
-      source: string;
-      /** Gabarit d'URL, avec `{clé}` à la place de l'identifiant. */
-      url: string;
-      /**
-       * Comment le palier du curseur filtre ces données.
-       *
-       * Les entités chargées à la demande ne portent pas forcément le champ du
-       * curseur : les rues d'une aire de marche portent une DISTANCE, là où le
-       * curseur compte des minutes. `field` nomme leur champ, et `scale`
-       * convertit — à 4,2 km/h, une minute vaut 70 m.
-       *
-       * Le filtre est un `<=` et non une égalité : une rue atteinte en trois
-       * minutes l'est encore à quinze.
-       */
-      threshold?: {
-        /** Champ des entités à comparer, ex. `"m"`. */
-        field: string;
-        /** Facteur appliqué au palier du curseur avant comparaison. */
-        scale: number;
-      };
-    };
-    /**
-     * Couches qui ne se dessinent que pour l'entité choisie.
-     *
-     * Elles restent vides tant que rien n'est sélectionné : c'est ce qui évite
-     * d'afficher vingt-neuf aires de marche superposées, illisibles.
-     */
-    revealLayers?: number[];
-    /**
-     * Curseur de temps, pour les labs dont les couches révélées existent à
-     * plusieurs paliers.
-     *
-     * Le lecteur fait varier la durée et voit l'aire grandir — ce qu'une forme
-     * figée ne montre pas : la marche s'étend d'abord le long de quelques axes,
-     * puis remplit les quartiers.
-     *
-     * Les paliers sont PRÉCALCULÉS : le curseur choisit parmi des formes déjà
-     * écrites, il ne calcule rien. C'est la règle du carnet — le travail lourd
-     * se fait une fois, dans un script, et le site sert du statique.
-     */
-    slider?: {
-      /** Propriété qui porte la valeur du palier, ex. `"minutes"`. */
-      field: string;
-      /** Paliers disponibles, dans l'ordre. Doivent exister dans les données. */
-      steps: number[];
-      /**
-       * Palier affiché à l'ouverture. Absent = le dernier.
-       *
-       * Un palier bas laisse le lecteur faire grandir la forme lui-même et voir
-       * la croissance ; un palier haut lui donne le résultat d'emblée. Le choix
-       * dépend de ce que le lab veut faire comprendre.
-       */
-      start?: number;
-      /** Libellé du curseur, ex. « Durée de marche ». */
-      label: Bilingual;
-      /** Unité affichée après la valeur, ex. « min ». */
-      suffix?: string;
-      /**
-       * Onde qui marque le passage d'un palier au suivant.
-       *
-       * Quand le lecteur monte le curseur, le contour de la NOUVELLE forme
-       * surgit, brille, puis s'estompe pendant que la tache grandit. On lit un
-       * anneau qui avance vers l'extérieur plutôt qu'une forme qui change d'un
-       * coup.
-       *
-       * Les formes sont précalculées et discrètes : ce n'est pas une
-       * interpolation entre deux polygones — un morphing demanderait d'apparier
-       * des contours qui n'ont ni le même nombre de sommets ni la même
-       * topologie. C'est l'opacité du contour qu'on anime, ce qui suffit à
-       * donner le mouvement.
-       *
-       * Ignorée quand le système demande moins de mouvement.
-       */
-      wave?: {
-        /** Indice de la couche de contour à faire pulser. */
-        layer: number;
-        /** Durée de l'onde, en millisecondes. */
-        duration?: number;
-        /** Épaisseur de l'anneau à son maximum, en pixels. */
-        width?: number;
-      };
-    };
-  };
   /** Légende affichée sous la carte. Sans elle, les couleurs ne disent rien. */
   legend?: Array<{ color: string; label: Bilingual }>;
   /**
@@ -590,6 +543,117 @@ export type LabDefinition = {
   /** Note de méthode sous la carte — hypothèses, limites, ce qui est approximé. */
   note?: Bilingual;
   /**
+   * Entités que le lecteur choisit d'un clic, et ce qui s'affiche alors.
+   *
+   * POURQUOI UNE SÉLECTION ET PAS UN SURVOL — le survol s'efface dès que le
+   * curseur bouge, et il n'existe pas au doigt. Dès que le lecteur doit AGIR
+   * sur ce qu'il a choisi — faire varier une durée, lire plusieurs chiffres —
+   * il faut que son choix persiste.
+   */
+  select?: {
+    /** Indices des couches de `layers` qui répondent au clic. */
+    layers: number[];
+    /**
+     * Propriété qui identifie l'entité choisie, ex. `"station"`.
+     *
+     * Sa valeur filtre les couches révélées : c'est ainsi qu'un clic sur une
+     * station fait apparaître SON aire et pas les autres.
+     */
+    key: string;
+    /**
+     * Couches qui ne se dessinent que pour l'entité choisie.
+     *
+     * Elles restent vides tant que rien n'est sélectionné — vingt-neuf aires
+     * superposées ne se liraient pas.
+     */
+    revealLayers?: number[];
+    /**
+     * Parmi `revealLayers`, celles qui se révèlent par OPACITÉ plutôt que par
+     * filtre sur `key`/`minutes`.
+     *
+     * Nécessaire pour une couche branchée sur le fond de carte (`sourceLayer`
+     * déclaré) : ses entités n'ont pas les champs du GeoJSON du lab, donc le
+     * filtre habituel — `["==", ["get", key], valeur]` — ne les sélectionnerait
+     * jamais, qu'une entité soit choisie ou non. L'opacité, elle, s'applique à
+     * la couche entière sans regarder ses entités.
+     */
+    revealByOpacity?: number[];
+    /**
+     * Données chargées seulement pour l'entité choisie.
+     *
+     * Les rues parcourues depuis une station pèsent quelques centaines de
+     * kilooctets : les servir pour vingt-neuf stations ferait télécharger
+     * plusieurs mégaoctets à qui n'en regarde qu'une.
+     *
+     * `url` porte un gabarit où `{clé}` est remplacé par la valeur de `key`,
+     * en minuscules et sans accents. Le fichier est gardé en mémoire après son
+     * premier chargement.
+     */
+    onDemand?: { source: string; url: string };
+    /**
+     * Curseur qui fait varier un palier.
+     *
+     * Les paliers sont PRÉCALCULÉS : le curseur choisit parmi des formes déjà
+     * écrites, il ne calcule rien. Le travail lourd se fait une fois, dans un
+     * script, et le site sert du statique.
+     */
+    slider?: {
+      /** Propriété qui porte la valeur du palier, ex. `"minutes"`. */
+      field: string;
+      /** Paliers disponibles, dans l'ordre. */
+      steps: number[];
+      /** Palier affiché à l'ouverture. Absent = le dernier. */
+      start?: number;
+      /** Libellé du curseur. */
+      label: Bilingual;
+      /** Unité affichée après la valeur, ex. « min ». */
+      suffix?: string;
+      /**
+       * Fondu entre deux paliers, en millisecondes.
+       *
+       * Les formes sont discrètes : passer de l'une à l'autre se voit comme un
+       * saut. On ne peut pas interpoler leurs sommets — deux polygones
+       * successifs n'ont ni le même nombre de sommets ni la même topologie —
+       * mais faire monter l'opacité de la nouvelle depuis zéro suffit, surtout
+       * quand les paliers sont rapprochés.
+       *
+       * Ignoré quand le système demande moins de mouvement.
+       */
+      fade?: number;
+    };
+    /**
+     * Propriété qui titre le panneau. Absente = la valeur de `key`.
+     *
+     * Les deux diffèrent quand l'identifiant n'est pas lisible — un code de
+     * station plutôt que son nom.
+     */
+    titleField?: string;
+    /**
+     * Chiffres affichés dans le panneau, pour l'entité choisie au palier
+     * courant.
+     *
+     * Volontairement distincts de ceux de `hover` : l'infobulle parle de ce
+     * qu'on survole — ici des tronçons de tracé — alors que le panneau parle
+     * de ce qu'on a choisi, et n'a donc pas les mêmes champs à montrer.
+     *
+     * Les champs sont lus sur l'entité révélée au palier courant, pas sur
+     * l'entité cliquée : c'est l'aire de marche qui porte les mesures, et
+     * elles changent à chaque cran du curseur.
+     */
+    rows?: LabHoverRow[];
+    /** Phrase affichée tant que rien n'est choisi. */
+    empty?: Bilingual;
+    /**
+     * Le tableau de bord de l'entité choisie — voir `LabPanel`.
+     *
+     * Tout est facultatif : un lab qui n'en déclare rien garde le panneau
+     * simple (curseur et lignes). Chaque bloc déclaré s'ajoute dans l'ordre de
+     * lecture : statut, chiffre principal, courbe, synthèse, anneau,
+     * indicateurs, méthode.
+     */
+    panel?: LabPanelConfig;
+  };
+  /**
    * Infobulle affichée au survol d'une entité.
    *
    * Préférable à des étiquettes posées à demeure : la carte reste lisible, et
@@ -599,10 +663,7 @@ export type LabDefinition = {
   hover?: {
     /** Indices des couches de `layers` qui réagissent au survol. */
     layers: number[];
-    /**
-     * Lignes de l'infobulle. `field` nomme une propriété de l'entité ; la
-     * ligne disparaît si elle est absente, ce qui évite les « undefined ».
-     */
+    /** Lignes de l'infobulle. */
     rows: LabHoverRow[];
   };
   /**

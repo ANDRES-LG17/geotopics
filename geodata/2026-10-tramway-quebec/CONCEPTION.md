@@ -438,6 +438,136 @@ mesure qui fait le travail.
 
 ---
 
+## 10. Le tableau de bord
+
+*Concept arrêté le 2026-10-05, avant toute conception graphique ni code.*
+
+### Le public, et le registre
+
+Le lab s'adresse à **tout public** — un citoyen venu de LinkedIn doit pouvoir
+manipuler la carte et en saisir l'objectif en quelques secondes. Il reste
+pourtant **un outil technique** : les termes sont exacts, le registre est
+**formel et impersonnel**, comme dans un rapport. Ni « voisins » ni « la ville
+que vous perdez » : *population desservie*, *aire de marche*, *cercle
+théorique* — chacun accompagné d'une définition courte.
+
+### Les cinq principes
+
+1. **Rigueur des termes, clarté de la présentation.** Chaque terme technique
+   porte une définition d'une ligne, accessible sur place (« ? »).
+2. **Toute valeur s'accompagne d'une comparaison.** « 4 747 habitants » isolé
+   ne dit rien ; « 22ᵉ sur 29, moyenne de la ligne : 5 900 » situe.
+3. **Une hiérarchie de lecture :** un chiffre principal, puis les graphiques,
+   puis les indicateurs détaillés. Rien n'est caché ; tout se lit dans l'ordre.
+4. **Une phrase de synthèse par station**, générée à partir des données, au
+   registre d'un rapport : c'est elle qui rend le constat lisible pour un
+   non-spécialiste.
+5. **La méthode et les sources toujours accessibles**, repliées en pied de
+   panneau.
+
+### La composition du panneau
+
+```
+┌───────────────────────────────────────┐
+│ Pôle d'échanges Saint-Roch    23 / 29 │
+│                                       │
+│ POPULATION DESSERVIE · 8 MIN À PIED   │
+│ 4 120 habitants                       │
+│ 22e sur 29 stations · moyenne 5 900   │
+│                                       │
+│ Durée de marche   ●━━━━━━━○──── 8 min │
+│                                       │
+│ AIRE DE MARCHE ET CERCLE THÉORIQUE  ? │
+│   ha                                  │
+│    │         ╱ cercle théorique       │
+│    │      ╱ ●                         │
+│    │   ╱ ─── aire de marche réelle    │
+│    └──────────────────────── min      │
+│ « La rivière Saint-Charles limite     │
+│   l'aire de marche à 41 % du cercle   │
+│   théorique. »                        │
+│                                       │
+│ MODE DE TRANSPORT DOMICILE–TRAVAIL  ? │
+│      ◯        ■ Automobile      62 %  │
+│     62 %      ■ Transport collectif 21│
+│  automobile   ■ Transport actif   17 %│
+│                                       │
+│ INDICATEURS                           │
+│ Aire de marche           72,7 ha      │
+│ Cercle théorique         98,5 ha      │
+│ Part du cercle atteinte  74 %         │
+│ Rues parcourues          26,8 km      │
+│                                       │
+│ ▸ Méthode et sources                  │
+└───────────────────────────────────────┘
+```
+
+*(Valeurs illustratives.)*
+
+### Les éléments
+
+**En-tête** — nom de la station, statut (*pôle d'échanges* ou station), rang
+sur la ligne (n / 29).
+
+**Chiffre principal** — la population desservie à la durée choisie, avec son
+**rang** parmi les 29 stations et la **moyenne de la ligne** à la même durée.
+
+**Courbe « aire de marche et cercle théorique »** — deux courbes de 2 à 15 min :
+le cercle qu'on atteindrait en ligne droite (gris, pointillé) et l'aire réelle
+(cyan, la couleur de l'aire sur la carte). L'écart entre les deux est ce que le
+terrain retranche — rivière, autoroute, falaise. **Un point suit le curseur.**
+C'est le graphique qui porte le propos méthodologique du lab : le rayon
+théorique de 800 m surestime la desserte.
+
+**Anneau « mode de transport domicile–travail »** — part des résidents de
+l'aire selon leur mode principal, regroupé en trois catégories : *Automobile*,
+*Transport collectif*, *Transport actif* (marche et vélo). Au centre, la part
+de l'automobile. **Il se recalcule avec le curseur**, l'aire couvrant d'autres
+secteurs ; la transition doit être fondue, pour se lire comme une évolution et
+non comme un saut. Couleurs : automobile en gris foncé, transport collectif en
+violet (celui du tramway), transport actif en vert — jamais le cyan ni l'orange,
+qui désignent déjà l'aire et les rues sur la carte.
+
+**Phrase de synthèse** — générée selon le profil de la station : obstacle
+principal (rivière, autoroute), part du cercle atteinte, rang.
+
+**Indicateurs** — les valeurs techniques conservées : aire de marche (ha),
+cercle théorique (ha), part du cercle atteinte (%), rues parcourues (km).
+
+**Méthode et sources** — vitesse de 4,2 km/h et sa justification, réseau
+piéton OSM, recensement de 2021, méthode de pondération par la surface,
+origine des positions de stations.
+
+### Les données nouvelles
+
+- **Mode de transport domicile–travail**, recensement de **2021**, par aire de
+  diffusion, réparti sur l'aire de marche par pondération de surface — même
+  méthode que la population. Source : le profil du recensement déjà extrait
+  (fichier de 6,5 Go, `00-brut/statcan`).
+- **Limites à écrire dans la méthode :** le recensement date de **mai 2021, en
+  pleine pandémie** — le transport collectif y est sous-représenté ; la
+  donnée ne porte que sur les **personnes occupées travaillant hors du
+  domicile** et provient du **questionnaire détaillé** (un ménage sur quatre).
+
+### Les choix techniques
+
+- Graphiques dessinés en **SVG, sans bibliothèque** : aucun poids ajouté.
+- Les valeurs par palier (population, aires, modes de transport) sont
+  **précalculées** dans les fichiers de station chargés au clic — le panneau
+  n'effectue aucun calcul géographique.
+- Sur téléphone, le panneau occupe 40 % de la hauteur : sections repliables.
+
+### Écarté, pour l'instant
+
+- La **courbe de population** (minutes → habitants) : redondante avec le
+  chiffre principal et le curseur.
+- Le **profil des 29 stations** en barres : fort, mais il charge le panneau ;
+  à reconsidérer comme bandeau sous la carte.
+- Les **services à 15 minutes** (écoles, épiceries, santé, depuis OSM) et les
+  **correspondances du RTC** : seconde phase.
+
+---
+
 ## Annexe — le contexte, pour le texte de l'entrée
 
 Ces chiffres ne sont **pas** cartographiés. Ils situent, en deux ou trois

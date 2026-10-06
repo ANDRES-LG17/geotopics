@@ -1,11 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getLab, type LabId } from "@/labs";
 import type { Locale } from "@/i18n/routing";
-import LabPanel from "./LabPanel";
 
 /**
  * Enveloppe d'un lab dans une entrée du carnet.
@@ -57,52 +55,6 @@ export default function LabEmbed({
   const t = useTranslations("entry");
   const lab = getLab(labId);
 
-  const [choisi, setChoisi] = useState<Record<string, unknown> | null>(null);
-  const [donnees, setDonnees] = useState<Record<string, unknown> | null>(null);
-  const [palier, setPalier] = useState<number | null>(
-    lab.select?.slider?.start ??
-      lab.select?.slider?.steps[lab.select.slider.steps.length - 1] ??
-      null,
-  );
-
-  // Stable d'un rendu à l'autre : `LabMap` l'a en dépendance d'effet, et une
-  // fonction recréée à chaque rendu y relancerait la notification en boucle.
-  const recevoirSelection = useCallback(
-    (
-      entite: Record<string, unknown> | null,
-      valeurs: Record<string, unknown> | null,
-    ) => {
-      setChoisi(entite);
-      setDonnees(valeurs);
-    },
-    [],
-  );
-
-  const curseur = lab.select?.slider;
-
-  /**
-   * Le panneau prend sa place à côté de la carte, et la garde.
-   *
-   * Il reste affiché même sans sélection — vide, avec sa phrase d'invitation.
-   * Sinon la carte changerait de largeur à chaque clic, MapLibre redessinerait
-   * tout, et le lecteur verrait la carte sauter sous ses yeux au moment précis
-   * où il vient d'y choisir quelque chose.
-   *
-   * Sous 1024 px le panneau passe SOUS la carte : à cette largeur, deux
-   * colonnes donnent deux bandes trop étroites pour l'une comme pour l'autre.
-   */
-  const carte = (
-    <LabMap
-      lab={lab}
-      label={title}
-      errorLabel={t("labError")}
-      locale={locale}
-      fill
-      onSelection={lab.select ? recevoirSelection : undefined}
-      palierExterne={palier}
-    />
-  );
-
   return (
     <figure
       className={
@@ -111,31 +63,13 @@ export default function LabEmbed({
           : "m-0 h-[70vh] min-h-[420px] sm:h-[78vh]"
       }
     >
-      {lab.select ? (
-        <div className="grid min-h-0 flex-1 grid-rows-[1fr_auto] gap-3 lg:grid-cols-[1fr_20rem] lg:grid-rows-1">
-          <div className="relative min-h-0">{carte}</div>
-          <LabPanel
-            titre={
-              choisi ? String(choisi[lab.select.title] ?? "") : ""
-            }
-            lignes={lab.select.rows}
-            donnees={donnees ?? choisi ?? {}}
-            curseur={curseur}
-            palier={palier}
-            onPalier={setPalier}
-            onFermer={() => setChoisi(null)}
-            lang={locale === "en" ? "en" : "fr"}
-            vide={lab.select.empty}
-            // En mode plein, la légende et la source n'ont pas d'autre place :
-            // le panneau les porte. Dans une entrée, elles restent sous la
-            // carte avec la note de méthode, où le texte les entoure.
-            legende={plein ? lab.legend : undefined}
-            attribution={plein ? lab.attribution : undefined}
-          />
-        </div>
-      ) : (
-        carte
-      )}
+      <LabMap
+        lab={lab}
+        label={title}
+        errorLabel={t("labError")}
+        locale={locale}
+        fill
+      />
 
       {/*
         En mode plein, seule l'attribution reste — les licences CC-BY des jeux
@@ -144,13 +78,9 @@ export default function LabEmbed({
         téléchargement reviendront avec l'article.
       */}
       {plein ? (
-        // Avec un panneau, la source est déjà à son pied : la répéter ici
-        // prendrait de la hauteur à la carte pour redire la même chose.
-        lab.select ? null : (
-          <figcaption className="mt-2 shrink-0 text-[11px] leading-snug text-fg-subtle">
-            {t("labSource")} {lab.attribution[locale]}
-          </figcaption>
-        )
+        <figcaption className="mt-2 shrink-0 text-[11px] leading-snug text-fg-subtle">
+          {t("labSource")} {lab.attribution[locale]}
+        </figcaption>
       ) : (
       <figcaption className="mt-4 space-y-3 text-sm">
         {lab.legend && (

@@ -62,16 +62,20 @@ VITESSE_KMH = 4.2
 
 #: Paliers de temps calculés, en minutes.
 #:
-#: Six plutôt qu'un seul : le lab laisse le lecteur faire varier la durée, et
-#: voir l'aire grandir dit quelque chose qu'une seule forme ne dit pas — on
-#: découvre que la marche s'étend le long de quelques axes avant de remplir les
-#: quartiers.
+#: Le lab laisse le lecteur faire varier la durée, et voir l'aire grandir dit
+#: quelque chose qu'une seule forme ne dit pas — on découvre que la marche
+#: s'étend le long de quelques axes avant de remplir les quartiers.
 #:
-#: Six paliers suffisent à ce que le mouvement paraisse continu. Le graphe n'est
-#: parcouru qu'UNE fois par station, jusqu'au plus grand palier ; les six formes
-#: sont ensuite découpées dans ce même parcours. Ajouter un palier ne coûte donc
-#: que son polygone, pas un calcul de plus.
-PALIERS_MIN = [3, 5, 7, 10, 12, 15]
+#: UN PAR MINUTE, et non six paliers espacés comme dans la première version.
+#: Avec six, le curseur sautait d'une forme à l'autre et le mouvement se voyait
+#: par à-coups. Quatorze paliers réduisent le saut de moitié, et le fondu entre
+#: deux formes fait le reste : l'expansion paraît continue.
+#:
+#: Le coût est faible : le graphe n'est parcouru qu'UNE fois par station,
+#: jusqu'au plus grand palier, et chaque forme est ensuite découpée dans ce même
+#: parcours. Un palier de plus ne coûte que son polygone — quelques kilooctets —
+#: pas un calcul supplémentaire.
+PALIERS_MIN = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
 #: Le curseur du lab descend jusqu'à 0, où il n'y a rien à montrer : aucune
 #: forme n'est donc calculée pour ce palier. C'est le lab qui gère ce cas, en
@@ -91,28 +95,68 @@ COULOIR_M = 40
 
 #: Tolérance de simplification du polygone, en mètres.
 #:
-#: 3 m, et non 8 comme dans la première version. La simplification n'est plus
-#: là pour donner la forme — c'est le lissage qui s'en charge — mais seulement
-#: pour retirer les sommets que le tampon pose en double. Une tolérance trop
-#: large coupait les extrémités fines, c'est-à-dire les rues qui s'enfoncent le
-#: plus loin : l'information même.
-SIMPLIFICATION_M = 3
+#: 35 m, et c'est volontairement généreux.
+#:
+#: La simplification vient AVANT le lissage et lui prépare la matière : elle
+#: réduit l'aire à son squelette, que Chaikin arrondit ensuite. Une tolérance
+#: faible (3 ou 8 m) laissait 1 400 sommets au lissage, qui les quadruplait pour
+#: un détail invisible — 28,5 ko par aire, 2,5 Mo projetés pour vingt-neuf
+#: stations.
+#:
+#: À 35 m, la forme tombe à 66 sommets avant lissage et 437 après, pour 9,8 ko
+#: et un écart de surface de 1,7 %.
+SIMPLIFICATION_M = 35
 
 #: Itérations de lissage de Chaikin appliquées au contour.
 #:
-#: Deux suffisent à faire disparaître les angles du tampon. Une troisième
-#: quadruplerait encore les sommets pour une différence qu'on ne voit pas à
-#: l'écran.
-LISSAGE_ITERATIONS = 2
+#: Trois, puisque la simplification a laissé peu de sommets : c'est elle qui
+#: décide du poids, et le lissage peut donc être généreux. Trois itérations sur
+#: un squelette coûtent moins que deux sur une forme détaillée.
+LISSAGE_ITERATIONS = 3
 
 #: Aire minimale d'un trou conservé, en mètres carrés.
 #:
-#: Mesuré sur l'aire de quinze minutes de Saint-Roch : vingt trous, dont seize
-#: de moins de 0,3 ha. Ces seize occupaient 0,2 % de la surface et coûtaient
-#: 41 % de sommets en plus — des interstices entre îlots, pas une information.
-#: Les plus grands restent : une cour fermée ou un faisceau ferroviaire dit
-#: quelque chose.
-TROU_MIN_M2 = 3000
+#: Un trou naît quand les couloirs de 40 m autour de deux rues parallèles ne se
+#: rejoignent pas : il reste un vide au cœur de l'îlot. Les îlots de Saint-Roch
+#: font 60 à 100 m, donc ceux de plus de 80 m en produisent un.
+#:
+#: Ce sont des CŒURS D'ÎLOTS, pas des zones inaccessibles — et c'est l'erreur
+#: de méthode : un piéton ne traverse pas un îlot bâti, mais il n'a pas besoin
+#: d'y entrer pour que l'immeuble soit desservi. Le trou n'apprend rien.
+#:
+#: Mesuré sur l'aire de quinze minutes : vingt trous totalisant 0,8 % de la
+#: surface. Un seuil à 3 000 m² en laissait encore trois, tous du même genre.
+#: À 1 ha, aucun cœur d'îlot ne survit — seul un vrai vide (parc clos, faisceau
+#: ferroviaire) resterait visible.
+#:
+#: INFINI depuis le passage aux 29 stations : TOUS les trous sont comblés.
+#: Le seuil d'un hectare laissait les cœurs des très grands îlots — centres
+#: commerciaux, échangeurs, campus — et à 15 minutes, 17 stations sur 29 en
+#: portaient de 1 à 6 ha. Ils se lisaient comme des taches de voile au milieu de
+#: l'aire, sans rien apprendre : ce ne sont pas des zones hors d'atteinte. Voir
+#: `tramway-combler-trous.py`, qui a appliqué la règle aux résultats existants.
+TROU_MIN_M2 = float("inf")
+
+#: Débordement du voile autour de l'aire, en mètres.
+#:
+#: Le voile est un polygone TROUÉ : son contour extérieur couvre la ville, son
+#: anneau intérieur est l'aire de marche. C'est ce trou qui révèle les rues du
+#: fond en laissant passer leur contraste, là où tout le reste est atténué.
+#:
+#: Pourquoi si large — le voile doit dépasser ce que l'écran peut montrer, sinon
+#: on aperçoit son bord en s'éloignant ou en faisant glisser la carte, et le
+#: dispositif se démonte à l'œil. 12 km autour d'une aire qui fait au plus 1 km
+#: de rayon : à ce stade le polygone ne coûte rien de plus (quatre sommets de
+#: plus que l'anneau), et il couvre tout l'agglomération de Québec.
+VOILE_DEBORD_M = 12000
+
+#: Aire minimale d'un morceau de voile conservé, en mètres carrés.
+#:
+#: Sépare un vrai morceau de voile d'une écharde de calcul. Généreux à dessein :
+#: un morceau légitime — le voile de part et d'autre d'une aire coupée en deux —
+#: se compte en kilomètres carrés, soit mille fois plus. Il n'y a donc pas de
+#: zone grise où le seuil pourrait écarter quelque chose d'utile.
+ECLAT_MIN_M2 = 10000
 
 #: Nombre de décimales des coordonnées exportées. 4 ≈ 11 m à cette latitude.
 #: C'est la règle de `public/data/README.md` : au-delà on transporte une
@@ -189,13 +233,18 @@ def isochrones(graphe, depart, paliers=PALIERS_MIN):
         graphe, depart, cutoff=portee_max, weight="poids"
     )
 
+    aretes_atteintes = list(graphe.edges(list(atteints), data=True))
+
     resultats = []
     for minutes in sorted(paliers):
         portee = portee_m(minutes)
         segments = []
         metres_de_rue = 0.0
 
-        for a, b, donnees in graphe.edges(data=True):
+        # Seules les arêtes qui touchent un nœud atteint peuvent compter : les
+        # parcourir toutes, sur le réseau du corridor entier, coûtait vingt
+        # fois plus pour un résultat identique.
+        for a, b, donnees in aretes_atteintes:
             da, db = atteints.get(a), atteints.get(b)
             # Une arête dont aucune extrémité n'est atteinte DANS CE PALIER est
             # hors sujet : `atteints` porte les distances jusqu'au palier
@@ -236,19 +285,83 @@ def isochrones(graphe, depart, paliers=PALIERS_MIN):
         # lisser un contour déjà facetté revient à polir une pièce mal coulée.
         forme = unary_union(segments).buffer(COULOIR_M, resolution=16)
 
-        # Les interstices entre îlots partent avant le lissage : les lisser
-        # serait du travail perdu, et ils hachent le contour.
+        # Les cœurs d'îlots partent avant le lissage : les lisser serait du
+        # travail perdu, et ils hachent le contour.
         forme = nettoyer_trous(forme, TROU_MIN_M2)
 
-        # Simplification légère — 3 m au lieu de 8. Elle n'est plus là pour
-        # donner la forme mais pour retirer les sommets que le tampon a posés
-        # en double ; c'est le lissage qui décide du dessin.
+        # SIMPLIFIER FORT, PUIS LISSER — et dans cet ordre.
+        #
+        # Lisser une forme de 1 400 sommets dépense le travail en détail que
+        # personne ne regarde, et le fichier triplait : 28,5 ko par aire, soit
+        # 2,5 Mo projetés pour vingt-neuf stations. Simplifier d'abord réduit la
+        # forme à son squelette — 66 sommets — et le lissage l'arrondit ensuite.
+        #
+        # Mesuré : 437 sommets et 9,8 ko au lieu de 1 404 et 28,5 ko, pour un
+        # écart de surface de 1,7 %. Dans un lab schématique, cet écart est
+        # inférieur à l'incertitude de la méthode elle-même — positions de
+        # stations à 50 m près, trottoirs incomplets dans OSM, vitesse estimée.
         forme = forme.simplify(SIMPLIFICATION_M, preserve_topology=True)
 
         forme = lisser_contour(forme, LISSAGE_ITERATIONS)
         resultats.append((minutes, forme, metres_de_rue))
 
     return resultats
+
+
+def voile_troue(forme, debord=VOILE_DEBORD_M):
+    """L'inverse d'une aire : tout sauf elle.
+
+    MapLibre ne sait pas découper une couche de lignes avec un polygone — il
+    n'existe pas de « clip » par géométrie. Pour ne montrer les rues que dans
+    l'aire, on prend donc le problème à l'envers : au lieu de découper les rues,
+    on ATTÉNUE TOUT LE RESTE. Les rues du fond de carte se peignent en contraste
+    fort sur toute la ville, et ce voile les éteint partout sauf dans son trou.
+
+    Le filtre `within` aurait fait le découpage directement, mais MapLibre
+    marque ce filtre comme exigeant la géométrie complète (`geometryNeeded`) :
+    chaque rue de chaque tuile serait décodée et testée sommet par sommet contre
+    l'anneau, à chaque cran du curseur. Mesuré sur la tuile de Saint-Roch au
+    zoom 14 : 382 rues et 4 192 sommets, contre un anneau de 433 — environ un
+    million d'opérations par tuile, six tuiles à l'écran, quatorze paliers. Le
+    voile, lui, est UN SEUL polygone de remplissage : la carte n'a plus rien à
+    tester.
+
+    Le trou est l'aire telle quelle, déjà simplifiée et lissée : le bord du
+    voile est donc exactement le bord de l'aire, et les deux ne peuvent pas se
+    désaccorder.
+    """
+    from shapely.geometry import MultiPolygon, Polygon
+
+    minx, miny, maxx, maxy = forme.bounds
+    cadre = Polygon([
+        (minx - debord, miny - debord),
+        (maxx + debord, miny - debord),
+        (maxx + debord, maxy + debord),
+        (minx - debord, maxy + debord),
+    ])
+
+    # `difference` plutôt qu'un Polygon à trous construit à la main : l'aire
+    # peut être un multipolygone (un îlot détaché de l'autre côté d'une voie
+    # ferrée), et la soustraction gère ce cas sans qu'on ait à le distinguer.
+    voile = cadre.difference(forme)
+
+    # Les éclats de la soustraction partent.
+    #
+    # Là où le contour de l'aire se replie presque sur lui-même, `difference`
+    # laisse une écharde de quelques dizaines de mètres carrés — un résidu de
+    # calcul, pas une zone. Mesuré : une seule sur les 28 aires du jeu d'essai,
+    # 42 m² au palier de onze minutes à Saint-Roch.
+    #
+    # Minuscule, mais le voile est OPAQUE : l'écharde se peindrait comme une
+    # tache en plein milieu de la zone révélée, et ce défaut-là se voit. Le
+    # seuil vaut pour un morceau détaché, jamais pour le cadre lui-même, qui
+    # fait 24 km de côté.
+    if voile.geom_type == "MultiPolygon":
+        garde = [p for p in voile.geoms if p.area >= ECLAT_MIN_M2]
+        if garde:
+            voile = garde[0] if len(garde) == 1 else MultiPolygon(garde)
+
+    return voile
 
 
 def lisser_contour(forme, iterations=2):
@@ -324,104 +437,15 @@ def nettoyer_trous(forme, aire_min_m2=3000):
     return nettoyer_polygone(forme)
 
 
-def rues_atteintes(graphe, depart, portee_max):
-    """Les rues parcourues, chacune portant la distance à laquelle on l'atteint.
-
-    POURQUOI LES EXPORTER — l'aire de marche est une enveloppe : elle dit
-    jusqu'où l'on va, pas par où. Les rues, elles, montrent le calcul lui-même.
-    On y voit la marche progresser le long de quelques axes avant de remplir les
-    quartiers, et surtout on voit **pourquoi** la forme se coupe : les rues
-    s'arrêtent devant la falaise, le fleuve et l'autoroute.
-
-    UN SEUL JEU POUR TOUS LES PALIERS. Chaque segment porte `m`, la distance à
-    laquelle la marche l'atteint. Le lab n'a donc pas besoin de six copies : il
-    filtre sur ce champ, et une animation de seuil fait apparaître les rues dans
-    l'ordre où on les parcourt — ce qui est la vérité du calcul, pas un effet.
-
-    Les segments sont regroupés par tranches de distance avant d'être fusionnés :
-    sans cela, chaque arête du graphe deviendrait une entité, et le fichier
-    tripler ait pour la même image.
-    """
-    atteints = nx.single_source_dijkstra_path_length(
-        graphe, depart, cutoff=portee_max, weight="poids"
-    )
-
-    # Tranches de 150 m.
-    #
-    # Un premier essai à 50 m donnait 2 600 tronçons dont 55 % n'avaient que
-    # deux sommets : la tranche coupait les rues plus vite que `linemerge` ne
-    # pouvait les recoller, et le fichier pesait 452 ko. Des tranches trois fois
-    # plus larges laissent les rues entières se fondre en une seule ligne.
-    #
-    # Ce qu'on perd : la granularité de l'animation. À 4,2 km/h, 150 m valent
-    # un peu plus de deux minutes de marche — soit un palier du curseur. C'est
-    # exactement la finesse utile, puisque le lecteur ne demande jamais mieux.
-    PAS = 150
-    par_tranche = defaultdict(list)
-
-    for a, b, donnees in graphe.edges(data=True):
-        da, db = atteints.get(a), atteints.get(b)
-        if da is None and db is None:
-            continue
-
-        if da is not None and db is not None:
-            # La distance retenue est la plus GRANDE des deux : c'est le moment
-            # où le segment est entièrement parcouru.
-            distance = max(da, db)
-            par_tranche[int(distance // PAS)].append(LineString([a, b]))
-            continue
-
-        proche = a if da is not None else b
-        loin = b if da is not None else a
-        reste = portee_max - atteints[proche]
-        if reste <= 0:
-            continue
-        part = min(1.0, reste / donnees["poids"])
-        bout = (
-            proche[0] + (loin[0] - proche[0]) * part,
-            proche[1] + (loin[1] - proche[1]) * part,
-        )
-        distance = atteints[proche] + donnees["poids"] * part
-        par_tranche[int(distance // PAS)].append(LineString([proche, bout]))
-
-    from shapely.ops import linemerge
-
-    entites = []
-    for tranche in sorted(par_tranche):
-        # `linemerge` AVANT `unary_union` : l'union fusionne les géométries mais
-        # laisse les segments distincts, et c'est le merge qui recolle une rue
-        # droite en une seule ligne au lieu de quinze. Dans l'autre ordre, 78 %
-        # des tronçons ressortaient à deux sommets.
-        try:
-            fusion = linemerge(par_tranche[tranche])
-        except Exception:
-            fusion = unary_union(par_tranche[tranche])
-
-        geometries = (
-            list(fusion.geoms) if hasattr(fusion, "geoms") else [fusion]
-        )
-        for geo in geometries:
-            # Les segments très courts sont du bruit : des bouts de trottoir
-            # entre deux intersections, invisibles à l'échelle où on regarde.
-            if geo.is_empty or geo.length < 12:
-                continue
-            # Simplification à 4 m. Une rue vue d'avion n'a pas besoin de ses
-            # courbures au mètre près, et c'est ici que le poids se joue : le
-            # fichier porte des dizaines de milliers de sommets.
-            geo = geo.simplify(4, preserve_topology=False)
-            if geo.is_empty:
-                continue
-            entites.append({
-                "type": "Feature",
-                "properties": {
-                    "couche": "rue",
-                    # Distance en mètres à laquelle la marche atteint ce segment.
-                    "m": (tranche + 1) * PAS,
-                },
-                "geometry": mapping(vers_wgs(geo)),
-            })
-
-    return entites
+    for _ in range(iterations):
+        suivant = [points[0]]
+        for i in range(len(points) - 1):
+            a, b = points[i], points[i + 1]
+            suivant.append((a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25))
+            suivant.append((a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75))
+        suivant.append(points[-1])
+        points = suivant
+    return points
 
 
 def charger_population(chemin_geo, chemin_pop):
@@ -466,13 +490,50 @@ def population_dans(forme, aires):
     À dire dans la note du lab : le chiffre est une estimation, pas un
     décompte.
     """
+    # Index spatial : seules les aires dont l'emprise touche la forme sont
+    # examinées. Parcourir les milliers d'aires de la région pour chacune des
+    # 406 formes (29 stations × 14 paliers) rendait le calcul interminable.
+    arbre, liste = aires
     total = 0.0
-    for aire, habitants in aires:
+    for i in arbre.query(forme):
+        aire, habitants = liste[i]
         if habitants == 0 or not forme.intersects(aire):
             continue
         part = forme.intersection(aire).area / aire.area
         total += habitants * part
     return total
+
+
+_LIGNE = None
+
+
+def sur_la_ligne(lon, lat):
+    """Le point du tracé du tramway le plus proche, en (lon, lat) arrondis.
+
+    Le tracé est lu une seule fois, depuis le fichier publié du lab : c'est
+    exactement la ligne que le lecteur voit, donc celle sur laquelle la
+    pastille doit tomber.
+    """
+    global _LIGNE
+    from shapely.geometry import Point, shape
+    from shapely.ops import nearest_points, transform
+
+    if _LIGNE is None:
+        chemin = os.path.join(RACINE, "public", "data", "tramway-quebec-v1.geojson")
+        with open(chemin, encoding="utf-8") as f:
+            trace = json.load(f)
+        _LIGNE = unary_union([
+            transform(VERS_PLAN.transform, shape(e["geometry"]))
+            for e in trace["features"]
+            if e["properties"].get("couche") in ("tronçon", "tronçon_tunnel")
+        ])
+
+    point = Point(VERS_PLAN.transform(lon, lat))
+    proche = nearest_points(point, _LIGNE)[1]
+    x, y = VERS_WGS.transform(proche.x, proche.y)
+    # Cinq décimales (~1 m) et non quatre : à 11 m près, la pastille
+    # retomberait à côté du trait. Pour une poignée de points, cela ne pèse rien.
+    return round(x, 5), round(y, 5)
 
 
 def vers_wgs(geometrie):
@@ -487,8 +548,15 @@ def vers_wgs(geometrie):
 
 
 def main():
-    reseau = os.path.join(ATELIER, "00-brut", "osm", "reseau-pieton.json")
-    stations = os.path.join(ATELIER, "15-saisie-manuelle", "stations-tramcite.json")
+    # Chaque ligne s'affiche dès qu'elle est écrite, même redirigée vers un
+    # fichier : sans cela on ne voit rien jusqu'à la fin, et un calcul de
+    # plusieurs dizaines de minutes tourne à l'aveugle.
+    sys.stdout.reconfigure(line_buffering=True)
+
+    # Le corridor entier et les 29 stations. Le premier réseau ne couvrait que
+    # Saint-Roch et la colline : l'essai sur une station.
+    reseau = os.path.join(ATELIER, "00-brut", "osm", "reseau-pieton-corridor.json")
+    stations = os.path.join(ATELIER, "15-saisie-manuelle", "stations-tramcite-29.json")
 
     for chemin in (reseau, stations):
         if not os.path.exists(chemin):
@@ -508,60 +576,98 @@ def main():
 
     # La population est facultative : sans elle, le lab montre les surfaces et
     # tait les habitants plutôt que de refuser de tourner.
-    geo_ad = os.path.join(ATELIER, "00-brut", "statcan", "aires-diffusion.geojson")
-    pop_ad = os.path.join(ATELIER, "00-brut", "statcan", "population-ad.json")
+    # Le corridor entier : 988 aires de diffusion. Le premier extrait (433)
+    # s'arrêtait à -71,327 de longitude, et les aires de marche de Le Gendre,
+    # Chaudière et McCartney en débordaient — leur population sortait
+    # sous-estimée sans que rien ne le signale.
+    geo_ad = os.path.join(ATELIER, "00-brut", "statcan", "aires-diffusion-corridor.geojson")
+    pop_ad = os.path.join(ATELIER, "00-brut", "statcan", "population-ad-corridor.json")
     aires = None
     if os.path.exists(geo_ad) and os.path.exists(pop_ad):
         print("Lecture du recensement…")
-        aires = charger_population(geo_ad, pop_ad)
-        habitants = sum(h for _, h in aires)
-        print(f"  {len(aires)} aires de diffusion · {habitants:,} habitants".replace(",", " "))
+        from shapely.strtree import STRtree
+
+        liste_aires = charger_population(geo_ad, pop_ad)
+        habitants = sum(h for _, h in liste_aires)
+        print(f"  {len(liste_aires)} aires de diffusion · {habitants:,} habitants".replace(",", " "))
+        aires = (STRtree([a for a, _ in liste_aires]), liste_aires)
     else:
         print("Recensement absent — les populations ne seront pas calculées.")
 
     entites = []
-    for station in liste:
+    # Les voiles vivent dans leur propre fichier : leur contour extérieur fait
+    # 24 km de côté, et le mêler aux aires alourdirait le fichier que le panneau
+    # lit pour ses chiffres.
+    voiles = []
+
+    # REPRISE — chaque station terminée est écrite dans son propre fichier de
+    # travail. Un calcul interrompu reprend à la première station manquante au
+    # lieu de tout recommencer. Supprimer ce dossier force un recalcul complet
+    # (nécessaire si le réseau, les paliers ou la méthode changent).
+    reprise = os.path.join(ATELIER, "10-travail", "stations-calculees")
+    os.makedirs(reprise, exist_ok=True)
+
+    import time
+    debut_total = time.time()
+    for rang, station in enumerate(liste, start=1):
+        fichier = os.path.join(reprise, f"{station.get('ordre', rang):02d}.json")
+        if os.path.exists(fichier):
+            with open(fichier, encoding="utf-8") as f:
+                deja = json.load(f)
+            entites.extend(deja["entites"])
+            voiles.extend(deja["voiles"])
+            print(f"[{rang:2d}/{len(liste)}] {station['nom']} — déjà calculée")
+            continue
+        debut = time.time()
+        n_entites, n_voiles = len(entites), len(voiles)
+
         point = VERS_PLAN.transform(station["lon"], station["lat"])
         depart, ecart = noeud_le_plus_proche(graphe, point)
         if depart is None:
             print(f"  ⚠ {station['nom']} : aucun nœud à moins de {ACCROCHE_M} m")
             continue
 
-        print(f"\n  {station['nom']}  (accroche {ecart:.0f} m)")
+        print(f"\n[{rang:2d}/{len(liste)}] {station['nom']}  (accroche {ecart:.0f} m)")
 
-        # Les rues parcourues, dans un fichier par station : le lab les charge
-        # au clic plutôt que de faire télécharger les vingt-neuf à qui n'en
-        # regarde qu'une.
-        rues = rues_atteintes(graphe, depart, portee_m(max(PALIERS_MIN)))
-        cle = (
-            station["nom"].lower()
-            .replace("'", "").replace(" ", "-")
-            .replace("é", "e").replace("è", "e").replace("ê", "e")
-            .replace("à", "a").replace("ô", "o").replace("û", "u")
-            .replace("ç", "c")
-        )
-        chemin_rues = os.path.join(
-            RACINE, "public", "data", f"tramway-rues-{cle}-v1.geojson"
-        )
-        with open(chemin_rues, "w", encoding="utf-8") as f:
-            json.dump({
-                "type": "FeatureCollection",
-                "metadata": {
-                    "titre": f"Rues atteintes à pied depuis {station['nom']}",
-                    "script": "scripts/analysis/tramway-isochrones.py",
-                    "station": station["nom"],
-                    "vitesse_kmh": VITESSE_KMH,
-                    "methode": (
-                        "Chaque segment porte `m`, la distance à laquelle la "
-                        "marche l'atteint. Filtrer sur ce champ donne n'importe "
-                        "quel palier de temps : m ≤ vitesse × minutes."
-                    ),
-                    "source": "OpenStreetMap (ODbL)",
-                },
-                "features": rues,
-            }, f, ensure_ascii=False)
-        poids_rues = os.path.getsize(chemin_rues) / 1024
-        print(f"    rues : {len(rues)} tronçons · {poids_rues:.0f} ko → {os.path.basename(chemin_rues)}")
+        # Plus de fichier de rues par station.
+        #
+        # Le lab prend désormais les rues dans le FOND DE CARTE — la couche
+        # `transportation` des tuiles OpenMapTiles, déjà téléchargée — et c'est
+        # le voile qui décide d'où on les voit. Les 146 ko par station que ce
+        # bloc écrivait ne servaient plus, et les régénérer aurait fait
+        # réapparaître des fichiers que rien ne lit : la divergence silencieuse
+        # qui nous a déjà coûté une génération entière.
+        #
+        # `rue_km` ne vient pas d'eux mais du parcours lui-même, dans
+        # `isochrones` : la mesure survit à la suppression des fichiers.
+
+        # Le point de la station, qui est ce sur quoi on clique.
+        #
+        # Il voyage dans le même fichier que ses aires : une station sans son
+        # aire ne servirait à rien, et l'inverse non plus. Écrit AVANT les
+        # aires, mais l'ordre du fichier ne décide pas de l'ordre de dessin —
+        # c'est la couche qui le fait, et les stations y sont au-dessus.
+        entites.append({
+            "type": "Feature",
+            "properties": {
+                "couche": "station",
+                "station": station["nom"],
+                "nom": station["nom"],
+                "ordre": station.get("ordre"),
+                # Pôle d'échange : dessiné en cible noire, comme sur le plan
+                # officiel du réseau, plutôt qu'en simple pastille.
+                "pole": bool(station.get("pole_echange")),
+            },
+            # Posé SUR la ligne : le point le plus proche du tracé. La saisie
+            # manuelle tombait à 16–41 m du trait, et la pastille flottait à
+            # côté de la ligne au lieu d'y être enfilée comme sur le plan
+            # officiel. Les aires restent calculées depuis le point saisi :
+            # l'écart est sous la précision de la saisie (50–100 m).
+            "geometry": {
+                "type": "Point",
+                "coordinates": list(sur_la_ligne(station["lon"], station["lat"])),
+            },
+        })
 
         for minutes, forme, metres in isochrones(graphe, depart):
             if forme is None or forme.is_empty:
@@ -603,61 +709,137 @@ def main():
                 "geometry": mapping(vers_wgs(forme)),
             })
 
-    sortie = os.path.join(ATELIER, "30-export", "aires-marche-v1.geojson")
-    os.makedirs(os.path.dirname(sortie), exist_ok=True)
-    with open(sortie, "w", encoding="utf-8") as f:
+            # Le voile du même palier : tout sauf l'aire. C'est lui qui révèle
+            # les rues du fond de carte, en les atténuant partout ailleurs.
+            voiles.append({
+                "type": "Feature",
+                "properties": {
+                    "couche": "voile",
+                    "station": station["nom"],
+                    "minutes": minutes,
+                },
+                "geometry": mapping(vers_wgs(voile_troue(forme))),
+            })
+
+        with open(fichier, "w", encoding="utf-8") as f:
+            json.dump({"entites": entites[n_entites:], "voiles": voiles[n_voiles:]}, f, ensure_ascii=False)
+        ecoule = time.time() - debut
+        total = time.time() - debut_total
+        print(f"    ✓ terminée en {ecoule:.0f} s · {total / 60:.1f} min au total")
+
+    ecrire_par_station(entites, voiles)
+
+
+#: Version des fichiers publiés. Ils sont servis en cache immuable d'un an :
+#: toute régénération dont le contenu change DOIT incrémenter ce numéro, et
+#: le lab avec — sinon les navigateurs gardent l'ancienne version sans le dire.
+VERSION_DONNEES = 2  # v2 : trous comblés
+#: Version du fichier des stations, indépendante : il change pour d'autres
+#: raisons (v2 : séries de population et obstacles, pour le panneau).
+VERSION_STATIONS = 2
+
+#: Obstacle principal, nommé dans la phrase de synthèse du panneau. Seulement
+#: les cas VÉRIFIÉS sur la carte ; les autres stations reçoivent une phrase sans
+#: obstacle nommé plutôt qu'une hypothèse présentée comme un constat.
+OBSTACLES = {
+    "Saint-Roch": ("La rivière Saint-Charles limite", "The Saint-Charles River limits"),
+    "Sainte-Foy": ("Les échangeurs des autoroutes 73 et 540 limitent",
+                   "The Highway 73 and 540 interchanges limit"),
+    "Le Gendre": ("L'autoroute 40 et les grands terrains industriels limitent",
+                  "Highway 40 and large industrial lots limit"),
+}
+
+
+def cle_fichier(nom):
+    """Nom de station → identifiant de fichier.
+
+    Règle IDENTIQUE à celle de `LabMap`, qui construit l'URL au clic :
+    minuscules, accents retirés, apostrophes supprimées, espaces en tirets.
+    Une divergence ne lève aucune erreur — elle donne un 404 silencieux.
+    """
+    import unicodedata
+
+    sans_accent = "".join(
+        c for c in unicodedata.normalize("NFD", nom.lower())
+        if unicodedata.category(c) != "Mn"
+    )
+    return "-".join(sans_accent.replace("'", "").replace("\u2019", "").split())
+
+
+def ecrire_par_station(entites, voiles):
+    """Un petit fichier des stations, et un fichier par station.
+
+    POURQUOI DÉCOUPER — les 29 stations pèsent 5,2 Mo (0,62 Mo compressés) en
+    aires et en voiles. Tout servir à l'ouverture ferait attendre, surtout sur
+    un téléphone, un lecteur venu de LinkedIn qui ne regardera qu'une ou deux
+    stations. À l'ouverture, on ne sert donc que les points ; l'aire et le voile
+    d'une station n'arrivent qu'au clic, et le navigateur les garde ensuite.
+    """
+    import datetime
+
+    base = os.path.join(RACINE, "public", "data")
+    dossier = os.path.join(base, "tramway-station")
+    os.makedirs(dossier, exist_ok=True)
+    v = VERSION_DONNEES
+    commun = {
+        "script": "scripts/analysis/tramway-isochrones.py",
+        "genere_le": datetime.date.today().isoformat(),
+        "source": "OpenStreetMap (ODbL) ; Statistique Canada, Recensement 2021",
+        "attribution": "© les contributeurs d'OpenStreetMap",
+    }
+
+    points = [e for e in entites if e["properties"]["couche"] == "station"]
+    # Population par palier, sur chaque station : le panneau en tire le rang et
+    # la moyenne de la ligne sans télécharger les 29 fichiers de station.
+    for point in points:
+        nom = point["properties"]["station"]
+        aires = sorted(
+            (e["properties"] for e in entites
+             if e["properties"]["couche"] == "aire_marche" and e["properties"]["station"] == nom),
+            key=lambda q: q["minutes"],
+        )
+        point["properties"]["pop"] = [q.get("population", 0) for q in aires]
+        if nom in OBSTACLES:
+            point["properties"]["obstacle_fr"], point["properties"]["obstacle_en"] = OBSTACLES[nom]
+    chemin = os.path.join(base, f"tramway-stations-v{VERSION_STATIONS}.geojson")
+    with open(chemin, "w", encoding="utf-8") as f:
         json.dump({
             "type": "FeatureCollection",
-            "metadata": {
-                "titre": "Aires de marche autour des stations du tramway",
-                "script": "scripts/analysis/tramway-isochrones.py",
-                "genere_le": __import__("datetime").date.today().isoformat(),
-                "paliers_min": sorted(PALIERS_MIN),
-                "methode": (
-                    f"Parcours de graphe (Dijkstra) sur le réseau marchable "
-                    f"d'OpenStreetMap, à {VITESSE_KMH} km/h. Un polygone par "
-                    f"palier de temps, découpé dans un parcours unique. "
-                    f"Couloir de {COULOIR_M} m autour des rues atteintes, car "
-                    f"une rue dessert les bâtiments qui la bordent et pas son "
-                    f"seul axe. Pas d'enveloppe convexe : elle comblerait les "
-                    f"découpes, qui sont l'information."
-                ),
-                "vitesse_kmh": VITESSE_KMH,
-                "portee_15min_m": round(portee_m(15)),
-                "limites": (
-                    f"Vitesse retenue : {VITESSE_KMH} km/h, soit "
-                    f"{round(portee_m(15))} m en 15 minutes. Les études de "
-                    "transport retiennent souvent 4,8 km/h (1 200 m) ; cette "
-                    "valeur décrit un trottoir plat et sec, ce que Québec n'est "
-                    "ni l'hiver ni sur la falaise. Les chiffres ne se comparent "
-                    "donc pas directement à ceux qui retiennent 4,8 — une "
-                    "surface varie comme le carré de la portée. Les escaliers "
-                    "sont franchis sans pénalité de pente, ce qui rend la "
-                    "Haute-Ville encore un peu trop facile d'accès. La "
-                    "complétude des trottoirs dans OpenStreetMap varie selon "
-                    "les secteurs. Les positions des stations sont saisies à "
-                    "la main — voir le champ precision_m."
-                ),
-                "source": "OpenStreetMap (ODbL)",
-                "attribution": "© les contributeurs d'OpenStreetMap",
-            },
-            "features": entites,
+            "metadata": {**commun, "titre": "Stations de TramCité (29, dont 5 pôles)"},
+            "features": points,
         }, f, ensure_ascii=False)
+    print(f"\n  {len(points)} stations · {os.path.getsize(chemin) / 1024:.1f} ko → {os.path.basename(chemin)}")
 
-    poids = os.path.getsize(sortie) / 1024
-    stations_faites = len({e["properties"]["station"] for e in entites})
-    print(f"\n  {os.path.relpath(sortie, RACINE)}")
+    poids = []
+    for point in points:
+        nom = point["properties"]["station"]
+        contenu = [e for e in entites if e["properties"]["couche"] == "aire_marche"
+                   and e["properties"]["station"] == nom]
+        contenu += [e for e in voiles if e["properties"]["station"] == nom]
+        chemin = os.path.join(dossier, f"{cle_fichier(nom)}-v{v}.geojson")
+        with open(chemin, "w", encoding="utf-8") as f:
+            json.dump({
+                "type": "FeatureCollection",
+                "metadata": {
+                    **commun,
+                    "titre": f"Aires de marche et voiles — {nom}",
+                    "paliers_min": sorted(PALIERS_MIN),
+                    "vitesse_kmh": VITESSE_KMH,
+                    "methode": (
+                        f"Dijkstra sur le réseau marchable d'OpenStreetMap à "
+                        f"{VITESSE_KMH} km/h ; couloir de {COULOIR_M} m autour des "
+                        f"rues atteintes. Chaque voile est le complément de l'aire "
+                        f"du même palier. Population par pondération de surface "
+                        f"des aires de diffusion."
+                    ),
+                },
+                "features": contenu,
+            }, f, ensure_ascii=False)
+        poids.append(os.path.getsize(chemin) / 1024)
     print(
-        f"  {len(entites)} polygones · {stations_faites} stations × "
-        f"{len(PALIERS_MIN)} paliers · {poids:.1f} ko"
+        f"  {len(poids)} fichiers de station → tramway-station/ · "
+        f"{min(poids):.0f}–{max(poids):.0f} ko chacun, {sum(poids) / 1024:.1f} Mo en tout"
     )
-    # Projection pour les 29 stations : c'est la contrainte qui décide s'il
-    # faudra simplifier davantage ou passer aux tuiles vectorielles.
-    if stations_faites:
-        projete = poids / stations_faites * 29
-        verdict = "✓" if projete < 500 else ("acceptable" if projete < 2048 else "✗ HORS BUDGET")
-        print(f"  projection 29 stations : {projete:.0f} ko  {verdict}")
-
 
 if __name__ == "__main__":
     main()
