@@ -3,8 +3,8 @@
  *
  *   node scripts/build-tramway-quebec.mjs
  *
- * Lit l'export brut d'OpenStreetMap conservé dans l'atelier, chaîne les sept
- * tronçons dans l'ordre géographique, et écrit un GeoJSON unique dans
+ * Lit les deux exports bruts d'OpenStreetMap conservés dans l'atelier, chaîne
+ * les tronçons dans l'ordre géographique, et écrit un GeoJSON unique dans
  * `public/data/`.
  *
  * POURQUOI CE SCRIPT EXISTE — l'export brut pèse 17 ko de JSON Overpass, avec
@@ -19,10 +19,9 @@
  * reconstitution par des contributeurs de l'avis au marché du 19 décembre 2024.
  * OSM le dit lui-même : « Sujet à modification. » Le lab doit le dire aussi.
  *
- * LES SEPT TRONÇONS font 18,35 km, là où l'annonce officielle dit 19,3 km. Le
- * kilomètre manquant est probablement l'antenne de Charlesbourg, incomplète dans
- * OSM. À signaler dans la note du lab : une carte qui annonce 19 km en
- * dessinant 18 mentirait.
+ * LA LONGUEUR — huit ways, dont sept chaînés : 19 km mesurés, pour 19,3
+ * annoncés. L'un d'eux, le raccord de la montée Mendel, vient d'un second
+ * export : il porte un autre nom que les sept autres.
  *
  * Détail de la provenance dans `geodata/2026-10-tramway-quebec/SOURCES.md`.
  */
@@ -36,7 +35,20 @@ const ENTREE = path.join(
   "geodata/2026-10-tramway-quebec/00-brut/osm",
   "overpass-futur-tramway-2026-10-01.json",
 );
-const SORTIE = path.join(RACINE, "public/data/tramway-quebec-v1.geojson");
+/**
+ * Le raccord de la montée Mendel, entre Chaudière et le viaduc. Il manquait à
+ * l'export principal : ce way-là s'appelle « TramCité », pas « Futur Tramway
+ * de Québec », et la requête dépend du nom exact. Téléchargé seul, par son
+ * identifiant, le 2026-10-08.
+ */
+const RACCORD = path.join(
+  RACINE,
+  "geodata/2026-10-tramway-quebec/00-brut/osm",
+  "overpass-tramcite-raccord-2026-10-08.json",
+);
+// v2 : raccord de la montée Mendel — la ligne est continue de Le Gendre à
+// Charlesbourg.
+const SORTIE = path.join(RACINE, "public/data/tramway-quebec-v2.geojson");
 
 /** Millésime du tracé lui-même — pas celui du téléchargement. */
 const MILLESIME_TRACE = "2024-12-19";
@@ -46,7 +58,8 @@ const BASE_OSM = "2026-06-01";
 // --- lecture ---------------------------------------------------------------
 
 const brut = JSON.parse(readFileSync(ENTREE, "utf8"));
-const troncons = brut.elements.filter(
+const raccord = JSON.parse(readFileSync(RACCORD, "utf8"));
+const troncons = [...brut.elements, ...raccord.elements].filter(
   (e) => e.type === "way" && Array.isArray(e.geometry) && e.geometry.length > 1,
 );
 
@@ -279,8 +292,8 @@ const RACCORD_TOLERE_M = 80;
  * On suit donc les extrémités. Chaque tronçon se raccorde au suivant à moins de
  * quelques dizaines de mètres ; on part d'une extrémité libre et on avance.
  * Les tronçons qu'on n'atteint pas sont signalés plutôt que raccrochés de
- * force — c'est le cas d'un tronçon isolé à l'ouest (montée Mendel), séparé du
- * reste par 709 m de tracé absent d'OSM.
+ * force — c'était le cas du tronçon ouest (montée Mendel), séparé du reste par
+ * 709 m de tracé jusqu'à l'ajout du raccord.
  */
 function chainer(segments) {
   const restants = segments.map((s) => ({
@@ -476,19 +489,15 @@ ordonnes.forEach((troncon, index) => {
  * dessiner autrement — ou pas du tout — mais le fichier ne le perd pas en
  * silence.
  *
- * DEUX CAS, DE NATURE DIFFÉRENTE, vérifiés sur l'export du 2026-10-01 :
- *
- *   - `1554915809` (0,86 km, montée Mendel) est un **vrai trou** : il est à
- *     709 m du reste du tracé, et le tronçon intermédiaire est absent d'OSM.
- *     C'est la principale raison de l'écart avec les 19 km annoncés ;
+ * Un seul cas depuis le raccord de la montée Mendel (2026-10-08) :
  *
  *   - `1558354781` (0,07 km) est un **doublon de parcours** : ce court
  *     connecteur relie `1012496032` à `778997313`, deux tronçons qui se
  *     touchent déjà directement à 67 m. Le prendre ajouterait 70 m de tracé en
  *     double. Le laisser de côté est le bon choix, pas un défaut du chaînage.
  *
- * La distinction compte pour la note du lab : l'un signale une donnée
- * incomplète, l'autre une donnée redondante.
+ * Avant le raccord, `1554915809` (0,86 km, montée Mendel) restait isolé à
+ * 709 m du reste du tracé : un vrai trou, comblé par `1554915808`.
  */
 isoles.forEach((troncon) => {
   const tags = troncon.tags ?? {};
@@ -574,9 +583,9 @@ const geojson = {
     // 5 pôles d'échanges, « 2 km de tunnel ».
     longueur_annoncee_km: 19,
     ecart:
-      "Le tracé d'OSM est incomplet : un tronçon de l'ouest n'est pas " +
-      "raccordé, et environ 700 m de tracé manquent entre les deux. " +
-      "La longueur mesurée est donc inférieure aux 19 km annoncés.",
+      "Le tracé est continu de Le Gendre à Charlesbourg depuis l'ajout du " +
+      "raccord de la montée Mendel (way 1554915808, « TramCité »). " +
+      "La longueur mesurée rejoint les 19 km annoncés.",
     emprise,
     stations:
       "Les 29 stations ne sont pas cartographiées dans OSM. À saisir " +

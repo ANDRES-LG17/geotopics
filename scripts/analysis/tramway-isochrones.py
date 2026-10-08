@@ -519,13 +519,17 @@ def sur_la_ligne(lon, lat):
     from shapely.ops import nearest_points, transform
 
     if _LIGNE is None:
-        chemin = os.path.join(RACINE, "public", "data", "tramway-quebec-v1.geojson")
+        chemin = os.path.join(RACINE, "public", "data", "tramway-quebec-v2.geojson")
         with open(chemin, encoding="utf-8") as f:
             trace = json.load(f)
         _LIGNE = unary_union([
             transform(VERS_PLAN.transform, shape(e["geometry"]))
             for e in trace["features"]
-            if e["properties"].get("couche") in ("tronçon", "tronçon_tunnel")
+            # Les tronçons isolés aussi : le bout ouest (Le Gendre → Chaudière)
+            # n'est pas raccordé dans OSM. Sans lui, ces deux stations
+            # tombaient ensemble sur l'extrémité du tracé principal, à 1,3 km
+            # de Le Gendre.
+            if e["properties"].get("couche") in ("tronçon", "tronçon_tunnel", "tronçon_isolé")
         ])
 
     point = Point(VERS_PLAN.transform(lon, lat))
@@ -735,8 +739,9 @@ def main():
 #: le lab avec — sinon les navigateurs gardent l'ancienne version sans le dire.
 VERSION_DONNEES = 2  # v2 : trous comblés
 #: Version du fichier des stations, indépendante : il change pour d'autres
-#: raisons (v2 : séries de population et obstacles, pour le panneau).
-VERSION_STATIONS = 2
+#: raisons (v2 : séries de population et obstacles, pour le panneau ; v3 : Le
+#: Gendre et Chaudière posées sur le tronçon isolé de l'ouest).
+VERSION_STATIONS = 3
 
 #: Obstacle principal, nommé dans la phrase de synthèse du panneau. Seulement
 #: les cas VÉRIFIÉS sur la carte ; les autres stations reçoivent une phrase sans

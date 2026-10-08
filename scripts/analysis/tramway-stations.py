@@ -155,7 +155,7 @@ def main():
     rues = charger_rues(os.path.join(brut, "rues-stations.json"), os.path.join(brut, "rues-accents.json"))
     axe = unary_union([rues[n] for n in AXES if n in rues])
 
-    with open(os.path.join(RACINE, "public", "data", "tramway-quebec-v1.geojson"), encoding="utf-8") as f:
+    with open(os.path.join(RACINE, "public", "data", "tramway-quebec-v2.geojson"), encoding="utf-8") as f:
         trace_geo = json.load(f)
     trace = unary_union([
         plan(shape(e["geometry"])) for e in trace_geo["features"]

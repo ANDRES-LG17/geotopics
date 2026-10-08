@@ -111,13 +111,14 @@ const tramwayQuebec: LabDefinition = {
   id: "tramway-quebec",
 
   sources: {
-    tramway: "/data/tramway-quebec-v1.geojson",
+    tramway: "/data/tramway-quebec-v2.geojson",
     // Les 29 stations seules (6 ko) : c'est tout ce qu'on sert à l'ouverture.
     // Aires et voiles arrivent au clic, station par station — voir
     // `select.onDemand`. Un fichier publié ne change jamais : toute
     // régénération incrémente son numéro de version.
     // v2 : population par palier (rang et moyenne du panneau) et obstacles.
-    stations: "/data/tramway-stations-v2.geojson",
+    // v3 : Le Gendre et Chaudière à leur place (elles s'empilaient à l'est).
+    stations: "/data/tramway-stations-v3.geojson",
   },
 
   layers: [
@@ -316,9 +317,8 @@ const tramwayQuebec: LabDefinition = {
 
     // 7 — Les tronçons que le chaînage n'a pas retenus.
     //
-    // Deux entités, de nature différente : un trou réel dans la donnée d'OSM
-    // (montée Mendel, à 709 m du reste) et un connecteur de 70 m en doublon.
-    // Dessinés en gris pâle et pointillé serré — présents, mais visiblement
+    // Depuis le raccord de la montée Mendel (v2), un seul : un connecteur de
+    // 70 m en doublon. Dessinés en gris pâle et pointillé serré — présents, mais visiblement
     // pas du même statut que le tracé. Les cacher serait plus propre à l'œil
     // et moins honnête.
     {
@@ -735,11 +735,11 @@ const tramwayQuebec: LabDefinition = {
   },
 
   note: {
-    fr: "Tracé provisoire, reconstitué par les contributeurs d'OpenStreetMap d'après l'avis au marché du 19 décembre 2024 ; OSM le signale « sujet à modification ». Le vectoriel officiel n'est pas diffusé en données ouvertes. La géométrie relevée mesure 17,5 km, là où le projet en annonce 19 : un tronçon de l'ouest n'est pas raccordé et environ 700 m de tracé manquent dans OSM. Les 29 stations et les 5 pôles suivent le plan officiel de TramCité (tramcite.info). Aucune source ouverte ne publiant leurs coordonnées, chaque station est placée au croisement, dans OpenStreetMap, de la rue qui lui donne son nom et de l'axe officiel de la ligne ; les stations nommées d'après un lieu reprennent les coordonnées de Wikipédia, contrôlées par les croisements (écart de 0 à 70 m). Toutes sont posées sur le tracé. Les aires de marche sont calculées sur le réseau piéton d'OpenStreetMap à 4,2 km/h, une allure plus lente que la norme de 4,8 pour tenir compte des pentes et de l'hiver. Les rues qui s'éclairent dans l'aire sont celles du fond de carte, c'est-à-dire le réseau routier : elles situent la trame du quartier, mais ne sont pas exactement les tronçons empruntés par le calcul. Les kilomètres annoncés, eux, mesurent bien le réseau piéton parcouru. La pente de 12 % entre basse-ville et haute-ville, qui impose le tunnel, provient de la documentation du projet et non de cette géométrie.",
-    en: "Provisional route, reconstructed by OpenStreetMap contributors from the 19 December 2024 call for tenders; OSM flags it as \"subject to change\". No official vector file is published as open data. The surveyed geometry measures 17.5 km against the project's announced 19: one western segment is disconnected and roughly 700 m of route is missing from OSM. The 29 stations and 5 hubs follow the official TramCité map (tramcite.info). With no open source publishing their coordinates, each station sits where its namesake street crosses the line's official axis in OpenStreetMap; stations named after a place use Wikipedia's coordinates, checked against those crossings (0–70 m apart). All are snapped onto the route. Walksheds are computed on the OpenStreetMap pedestrian network at 4.2 km/h, slower than the usual 4.8 to account for grades and winter. The streets that light up inside the walkshed come from the basemap, that is the road network: they place the neighbourhood's fabric but are not exactly the segments the computation walked. The stated kilometres do measure the pedestrian network actually travelled. The 12% grade between lower and upper town, which forces the tunnel, comes from project documentation rather than this geometry.",
+    fr: "Tracé provisoire, reconstitué par les contributeurs d'OpenStreetMap d'après l'avis au marché du 19 décembre 2024 ; OSM le signale « sujet à modification ». Le vectoriel officiel n'est pas diffusé en données ouvertes. La géométrie relevée mesure 19 km, comme le projet l'annonce. Les 29 stations et les 5 pôles suivent le plan officiel de TramCité (tramcite.info). Aucune source ouverte ne publiant leurs coordonnées, chaque station est placée au croisement, dans OpenStreetMap, de la rue qui lui donne son nom et de l'axe officiel de la ligne ; les stations nommées d'après un lieu reprennent les coordonnées de Wikipédia, contrôlées par les croisements (écart de 0 à 70 m). Toutes sont posées sur le tracé. Les aires de marche sont calculées sur le réseau piéton d'OpenStreetMap à 4,2 km/h, une allure plus lente que la norme de 4,8 pour tenir compte des pentes et de l'hiver. Les rues qui s'éclairent dans l'aire sont celles du fond de carte, c'est-à-dire le réseau routier : elles situent la trame du quartier, mais ne sont pas exactement les tronçons empruntés par le calcul. Les kilomètres annoncés, eux, mesurent bien le réseau piéton parcouru. La pente de 12 % entre basse-ville et haute-ville, qui impose le tunnel, provient de la documentation du projet et non de cette géométrie.",
+    en: "Provisional route, reconstructed by OpenStreetMap contributors from the 19 December 2024 call for tenders; OSM flags it as \"subject to change\". No official vector file is published as open data. The surveyed geometry measures 19 km, as the project announces. The 29 stations and 5 hubs follow the official TramCité map (tramcite.info). With no open source publishing their coordinates, each station sits where its namesake street crosses the line's official axis in OpenStreetMap; stations named after a place use Wikipedia's coordinates, checked against those crossings (0–70 m apart). All are snapped onto the route. Walksheds are computed on the OpenStreetMap pedestrian network at 4.2 km/h, slower than the usual 4.8 to account for grades and winter. The streets that light up inside the walkshed come from the basemap, that is the road network: they place the neighbourhood's fabric but are not exactly the segments the computation walked. The stated kilometres do measure the pedestrian network actually travelled. The 12% grade between lower and upper town, which forces the tunnel, comes from project documentation rather than this geometry.",
   },
 
-  download: "/data/tramway-quebec-v1.geojson",
+  download: "/data/tramway-quebec-v2.geojson",
 };
 
 export default tramwayQuebec;

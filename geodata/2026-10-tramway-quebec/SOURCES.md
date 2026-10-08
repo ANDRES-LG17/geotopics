@@ -90,6 +90,26 @@ Charlesbourg, incomplète dans OSM).
 4. **Pas de profondeur pour le tunnel.** Les 15-40 m cités viennent de la
    documentation du projet, pas de la géométrie.
 
+### Le raccord de la montée Mendel — second export
+
+| | |
+| --- | --- |
+| **Téléchargé le** | 2026-10-08 (base OSM au 2026-10-08) |
+| **Fichier** | `00-brut/osm/overpass-tramcite-raccord-2026-10-08.json` |
+| **Requête** | `[out:json][timeout:60];way(1554915808);out geom;` |
+
+Le premier export laissait le tronçon ouest (1554915809) isolé, à 709 m du
+reste : Le Gendre et Chaudière flottaient hors de la ligne. Le trou n'était pas
+dans OSM mais dans la requête. Le tronçon manquant existe : way
+`1554915808`, 0,71 km, `railway=construction`, nommé **« TramCité »** et non
+« Futur Tramway de Québec ». C'est exactement le risque signalé plus haut,
+celui d'une requête qui dépend d'un nom exact.
+
+Il est seul dans le second export. Son jumeau `1554915806`, parallèle (l'autre
+voie), et le second viaduc `1554915805` ne sont pas pris : ils dédoubleraient
+le tracé. Avec ce raccord, la ligne est continue de Le Gendre à Charlesbourg et
+mesure **19 km**. La limite n° 2 ci-dessus est donc levée.
+
 ---
 
 ## Les 29 stations — INTROUVABLES en données ouvertes
