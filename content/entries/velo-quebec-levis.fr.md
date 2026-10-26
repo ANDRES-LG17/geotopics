@@ -1,6 +1,6 @@
 ---
-title: "À vélo, le fleuve coupe encore Québec de Lévis"
-description: "Quels tronçons manquent au réseau cyclable tranquille de Québec et de Lévis, et que pèse le pont de Québec dans le calcul ? En 15 minutes, 231 résidents atteignent aujourd'hui l'autre rive. Avec un tablier élargi, 10 747."
+title: "Jusqu'où va-t-on en 15 minutes à vélo à Québec et à Lévis ?"
+description: "Carte interactive de Québec–Lévis : déplacez le curseur, la zone atteinte en 15 minutes à vélo se recalcule en direct — relief, saisons, réseau déneigé et corridors VivaCité."
 date: "2026-10-21"
 category: "lab"
 tools: ["Python", "NetworkX", "GeoPandas", "GDAL", "QGIS", "MapLibre GL JS", "OpenStreetMap"]

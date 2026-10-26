@@ -1,6 +1,6 @@
 ---
-title: "By bike, the river still cuts Québec off from Lévis"
-description: "Which links are missing from the low-stress cycling network of Québec and Lévis, and how much does the Québec Bridge weigh in? Within 15 minutes, 231 residents reach the other shore today. With a widened deck, 10,747."
+title: "How far does a bike take you in 15 minutes across Québec and Lévis?"
+description: "Interactive map of Québec–Lévis: move the cursor and the area you reach in 15 minutes by bike is recomputed live — terrain, seasons, snow-cleared network and VivaCité corridors."
 date: "2026-10-21"
 category: "lab"
 tools: ["Python", "NetworkX", "GeoPandas", "GDAL", "QGIS", "MapLibre GL JS", "OpenStreetMap"]
