@@ -1,58 +1,68 @@
-# Journal — <nom du projet>
+# Diario — Desiertos de acceso
 
-Ce qui a été fait, et **pourquoi**. Les gestes se retrouvent dans les fichiers ;
-les décisions, non. C'est ici qu'on écrit les secondes.
+Lo que se hizo, y **por qué**. Los gestos quedan en los archivos; las
+decisiones, no. Aquí se escriben las segundas.
 
-Ce journal est la matière première de l'article : la section « ce qu'on a
-supposé » s'écrit toute seule quand les hypothèses ont été notées au moment où
-on les prenait.
-
----
-
-## Question de départ
-
-Ce que la carte doit montrer, en une phrase. Si elle ne tient pas en une phrase,
-le projet n'est pas encore cadré.
-
-## Zone d'étude et SCR
-
-- **Emprise** : …
-- **SCR de travail** : EPSG:2949 (MTM fuseau 7) — projeté, pour que les mesures
-  de distance et de surface aient un sens ;
-- **SCR de sortie** : EPSG:4326 — imposé par MapLibre.
-
-Travailler en géographique fausse toute mesure. Reprojeter en entrée, une fois,
-et n'en sortir qu'à l'export.
+Este diario es la materia prima del artículo: la sección "lo que supusimos"
+se escribe sola cuando las hipótesis se anotaron en el momento de tomarlas.
 
 ---
 
-## AAAA-MM-JJ
+## Pregunta de partida
 
-**Fait** — …
+¿Cuánto tiempo le toma a un trabajador agrícola temporal, sin coche, llegar a
+un hospital, una tienda, la CNESST o su consulado — comparado con quien sí
+tiene coche?
 
-**Pourquoi** — …
+## Zona de estudio y SCR
 
-**Hypothèse posée** — ce qu'on a décidé faute de mieux, et ce que ça coûte si
-c'est faux.
+- **Extensión**: todo el territorio agrícola cultivado de Quebec (BDPPAD);
+- **SCR de trabajo**: EPSG:32198 (Québec Lambert) — proyectado, para que las
+  distancias y superficies tengan sentido a escala provincial; un solo huso
+  MTM no basta;
+- **SCR de salida**: EPSG:4326 — impuesto por MapLibre.
 
-**À vérifier** — …
+Trabajar en geográfico falsea toda medición. Reproyectar a la entrada, una
+vez, y no salir de ahí hasta el export.
 
 ---
 
-## Décisions structurantes
+## 2026-10-14
 
-À reprendre presque telles quelles dans l'article :
+**Hecho** — Proyecto creado (`03-deserts-acces`, en lugar de
+`ville-15-minutes`, abandonado). Descargada la BDPPAD 2025 de la FADQ y su
+guía de usuario en `00-brut/fadq/`.
 
-| Décision | Raison | Conséquence si elle est fausse |
+**Por qué** — La BDPPAD dice **dónde se cultiva de verdad**, con el cultivo
+declarado. La zona agrícola de la CPTAQ es zonificación: incluye bosque y
+tierras sin cultivar, lo que diluiría el mapa. Formato en polígonos, todo
+Quebec, licencia abierta.
+
+**Hipótesis planteada** — La unidad del mapa será la zona cultivada de cada
+municipio, no la parcela ni el hexágono: tiene nombre, protege a las granjas
+y pesa poco. Si es falsa (municipios demasiado extensos), los tiempos de un
+polígono representan mal a sus granjas lejanas → partir los polígonos grandes.
+
+**Por verificar** — Número de parcelas con cultura declarada en 2025; peso
+tras disolver y simplificar; qué parte es hortícola.
+
+---
+
+## Decisiones estructurantes
+
+A retomar casi tal cual en el artículo:
+
+| Decisión | Razón | Consecuencia si es falsa |
 | --- | --- | --- |
-| Tampon de 500 m plutôt que réseau réel | pas de données de voirie complètes | surestime l'accessibilité en zone coupée par une rivière |
-| | | |
+| BDPPAD en lugar de la zona CPTAQ | la actividad real, no la zonificación | se omiten las granjas que nunca fueron clientes de la FADQ |
+| Año 2025, no 2026 | última temporada con declaraciones estables | ninguna, salvo cambios marginales de contorno |
+| Zona cultivada por municipio | ética, legibilidad, peso | tiempos poco representativos en municipios extensos |
 
-## Contrôles qualité
+## Controles de calidad
 
-- [ ] géométries valides (Vecteur ▸ Outils de géométrie ▸ Vérifier la validité) ;
-- [ ] pas de doublons ni d'entités vides ;
-- [ ] SCR déclaré = SCR réel (superposer à un fond connu) ;
-- [ ] totaux recoupés avec une source indépendante ;
-- [ ] ordres de grandeur plausibles — une surface en m² au lieu de km² se voit
-      tout de suite.
+- [ ] geometrías válidas;
+- [ ] sin duplicados ni entidades vacías;
+- [ ] SCR declarado = SCR real (superponer a un fondo conocido);
+- [ ] superficie total cruzada con una fuente independiente (StatCan,
+      Censo agrícola 2021);
+- [ ] órdenes de magnitud plausibles.

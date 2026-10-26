@@ -61,31 +61,29 @@ transporte disponible.
 
 - **Ninguna granja real identificable.** Señalar las explotaciones que
   emplean trabajadores temporales expondría a personas vulnerables y a
-  empresas con nombre propio. Los orígenes son **puntos representativos**
-  tomados dentro de las zonas agrícolas, o **celdas agregadas** (hexágonos),
-  nunca direcciones;
+  empresas con nombre propio. La unidad del mapa es la **zona agrícola de
+  un municipio** — las parcelas cultivadas disueltas y agregadas (§ 5),
+  nunca una parcela ni una dirección;
 - ningún dato nominativo, ningún testimonio geolocalizado;
 - la nota de método lo dice explícitamente: "los puntos de partida son
-  ficticios y representativos del territorio agrícola, no lugares de trabajo
-  reales".
+  representativos de la zona agrícola de cada municipio, no lugares de
+  trabajo reales".
 
 ## 4. Zona de estudio
 
-Prevista: **Saguenay–Lac-Saint-Jean** (alrededor de Chicoutimi) y
-**Bas-Saint-Laurent**.
+**Todas las regiones agrícolas productoras de Quebec** — de Montérégie y
+Lanaudière, que reciben más trabajadores temporales, a Saguenay–Lac-Saint-Jean
+y Bas-Saint-Laurent, donde el aislamiento es máximo.
 
-> **A verificar primero**: no son las regiones que más trabajadores agrícolas
-> temporales reciben en Quebec — Montérégie, Lanaudière, Laurentides y
-> Capitale-Nationale (île d'Orléans) concentran más. Dos lecturas posibles:
->
-> 1. **quedarse con las regiones alejadas** — el aislamiento es máximo, es el
->    caso extremo;
-> 2. **añadir una región de comparación** con alta concentración (Montérégie)
->    — para mostrar que el problema no es exclusivo de los confines.
->
-> La segunda hace la tesis más sólida: si incluso en Montérégie, a una hora de
-> Montreal, la diferencia auto / sin auto es enorme, el argumento se sostiene
-> en todas partes.
+Cubrir todo el territorio resuelve dos problemas a la vez:
+
+- **la comparación es automática** — si incluso en Montérégie, a una hora de
+  Montreal, la diferencia auto / sin auto es enorme, el argumento se sostiene
+  en todas partes;
+- **no hay que elegir regiones a mano**, lo que podría parecer un sesgo.
+
+Las escenas narrativas (§ 6) siguen haciendo zoom en un caso concreto
+(Saguenay, por ejemplo), pero el mapa base es provincial.
 
 - **SCR de trabajo**: EPSG:32198 (Québec Lambert) — la zona supera un solo
   huso MTM;
@@ -93,14 +91,78 @@ Prevista: **Saguenay–Lac-Saint-Jean** (alrededor de Chicoutimi) y
 
 ## 5. Lo que el mapa va a mostrar
 
-### Indicador 1 — la diferencia auto / sin auto *(el corazón)*
+### Indicador 1 — el tiempo para llegar a cada servicio *(el corazón)*
 
-- **Lo que se ve**: para cada celda agrícola, el tiempo hasta el servicio más
-  cercano **en coche**, y luego **a pie** o **en transporte público**;
-- **Geometría**: isócronas de 15, 30, 60 y 120 min alrededor de los
-  servicios; celdas coloreadas según la relación entre ambos tiempos;
+**Sin índice de vulnerabilidad.** Un índice compuesto mezcla variables con
+pesos arbitrarios y obliga a creer en la fórmula. Un tiempo de viaje no
+necesita explicación: "4 h 10 a pie hasta el hospital" lo entiende cualquiera.
+
+- **Geometría**: un **polígono por municipio agrícola** — la superficie
+  realmente cultivada, disuelta y simplificada (ver "De las parcelas a los
+  polígonos", más abajo);
+- **Color**: el tiempo **sin coche** hasta el servicio elegido (por defecto,
+  el hospital). Un selector cambia de servicio;
+- **Al pasar el cursor**: una ficha con los tiempos hacia cada servicio, en
+  cada modo de transporte:
+
+```
+┌──────────────────────────────────────────────┐
+│ Saint-Rémi · Montérégie                      │
+│ 4 820 ha cultivadas · 38 % hortícola         │
+│                                              │
+│                  Coche    A pie    Bus       │
+│ Hospital         24 min   5 h 50   —         │
+│ CLSC             12 min   2 h 40   —         │
+│ Supermercado      9 min   1 h 55   —         │
+│ CNESST           38 min   9 h 10   —         │
+│ CTI / organismo  52 min   —        —         │
+│ Consulado        48 min   —        2 h 30*   │
+│                                              │
+│ Cobertura móvil: débil                       │
+│                                              │
+│ « Sin coche, el hospital está 15 veces más   │
+│   lejos. Ningún autobús llega a esta zona. » │
+└──────────────────────────────────────────────┘
+  — = sin trayecto posible   * con transbordos
+```
+
+*(Valores ilustrativos.)*
+
+- **Una frase de síntesis** por polígono, generada a partir de los datos —
+  como en el panel del tramway;
+- **Servicios alcanzables**: "0 de 6 servicios a menos de 1 h sin coche" —
+  un conteo de tiempos, no un índice con pesos. Candidato para el color;
+- **A pie, más allá de un umbral** (8 h, por ejemplo), el tiempo se muestra
+  como "—": una caminata de 15 h no es un trayecto, es la ausencia de uno;
 - **La cifra que debe quedar**: "una clínica a 25 min en coche está a 6 h 40
   a pie, e inaccesible en transporte público" — calculada, no citada.
+
+### De las parcelas a los polígonos
+
+Fuente: **BDPPAD** de la FADQ (§ 7) — las parcelas realmente cultivadas, con
+su cultivo declarado. Cientos de miles de polígonos: inutilizables tal cual
+en un navegador.
+
+```
+Parcelas BDPPAD (año más reciente completo)
+   │ 1. filtrar: parcelas con cultivo declarado ese año
+   │ 2. disolver: unir parcelas vecinas en una sola mancha
+   │    (buffer +200 m → dissolve → buffer −200 m, para soldar las que
+   │     solo separa un camino)
+   │ 3. cortar por municipio → "zona agrícola de Saint-Rémi"
+   │ 4. simplificar contornos (≈ 100 m), redondear coordenadas
+   ▼
+~1 000 polígonos con nombre — objetivo < 1 Mo
+```
+
+En cada polígono se mide, **antes** de simplificar: hectáreas cultivadas,
+parte hortícola (frutas y hortalizas, donde se concentra la mano de obra
+temporal), y el **punto de partida** — el centro de la superficie cultivada,
+no el centro geométrico, que podría caer en un bosque.
+
+**Límite a escribir**: un municipio extenso tiene granjas a 5 km del pueblo y
+otras a 25 km. El tiempo es representativo, no exacto. Si un polígono es
+demasiado grande, se parte en dos.
 
 ### Indicador 2 — qué servicio, a qué distancia
 
@@ -152,8 +214,8 @@ hacer.
 
 ### Escena 3 — "Intenta buscar ayuda"
 
-- **Interacción**: el lector hace clic en un punto de partida (ficticio, § 3)
-  y elige un destino: hospital, supermercado, CNESST, consulado;
+- **Interacción**: el lector hace clic en una zona agrícola (§ 3) y elige
+  un destino: hospital, supermercado, CNESST, consulado;
 - **Respuesta**: el trayecto en coche, luego a pie, luego en transporte
   público. "Ningún trayecto en transporte público" o "7 h 50 a pie, de ellas
   22 km por la ruta 175, sin arcén";
@@ -162,8 +224,9 @@ hacer.
 
 **Restricción técnica**: *un lab no depende de nada externo*. Los trayectos
 **no** se calculan en directo con una API de rutas: se **precalculan** para
-cada punto de partida × destino, y el lab solo los muestra. Un número
-limitado de puntos (una treintena) lo hace razonable.
+cada polígono × destino, y el lab solo los muestra. Los **tiempos** de todos
+los polígonos se precalculan; el **trazado** de la ruta en el mapa, solo
+para una selección de zonas (una treintena), por peso.
 
 ## 7. Datos previstos
 
@@ -171,8 +234,9 @@ Fichas completas en `SOURCES.md`, **en el momento de la descarga**.
 
 | Dato | Fuente | ¿Existe? | Notas |
 | --- | --- | --- | --- |
-| **Territorio agrícola** | CPTAQ — zona agrícola | sí | Es zonificación, no actividad real |
-| **Parcelas cultivadas** | FADQ — parcelas y producciones agrícolas declaradas | **por verificar** | Más preciso que la zonificación: dónde se cultiva de verdad. Horticultura = mano de obra temporal |
+| **Parcelas cultivadas** | FADQ — BDPPAD | **sí, descargado** | **Fuente principal.** Dónde se cultiva de verdad, con el cultivo. Solo clientes asegurados de la FADQ — límite a decir |
+| Territorio agrícola | CPTAQ — zona agrícola transpuesta | sí | Contexto: es zonificación, no actividad real |
+| **Límites municipales** | MRNF — découpages administratifs (SDA) | sí | Para cortar las zonas por municipio |
 | **Trabajadores temporales por región** | IRCC / EDSC — puestos aprobados por EIMT, datos abiertos | **por verificar** | Para elegir la zona de estudio (§ 4) y cifrar el contexto |
 | **Hospitales, CLSC** | MSSS — repertorio de instalaciones (M02) | sí | Coordenadas a controlar |
 | **Supermercados** | OpenStreetMap | sí | Completitud rural a verificar en la zona de estudio |
@@ -223,17 +287,18 @@ los propios trabajadores — a discutir con el CTI.
 
 **Decidir primero**
 
-- [ ] **la zona de estudio** (§ 4): ¿solo regiones alejadas, o con una región
-      de comparación?
-- [ ] **la regla ética** (§ 3): ¿puntos ficticios o celdas agregadas?
-- [ ] verificar que exista un GTFS para cada región elegida
+- [x] **la fuente del territorio agrícola**: parcelas FADQ (BDPPAD 2025)
+- [ ] medir la BDPPAD: número de parcelas, peso, superficie hortícola
+- [ ] probar la simplificación (§ 5) en **una sola región** (Montérégie)
+- [ ] inventariar los GTFS disponibles en las regiones agrícolas
 - [ ] verificar la resolución de los datos de cobertura móvil de ISDE
 - [ ] contactar al CTI: interés, lista de recursos, relectura del propósito
 
 **Lo visual después**
 
 - [ ] una sola región, un solo servicio (el hospital): coche vs a pie
-- [ ] **primer mapa en pantalla** con el cambio coche / sin coche
+- [ ] **primer mapa en pantalla** con la ficha al pasar el cursor
+- [ ] extender a todas las regiones agrícolas
 - [ ] medir el peso de las isócronas → estrategia de extensión
 
 **La medición**
