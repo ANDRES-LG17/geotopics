@@ -24,7 +24,7 @@ import type { LabDefinition } from "./types";
  *
  * Toutes les données viennent d'un seul GeoJSON — un aller-retour réseau au
  * lieu de trois — que `scripts/analysis/lac-saint-charles.py` produit depuis
- * l'atelier `geodata/2026-09-lac-saint-charles/`. Le champ `couche` de chaque
+ * l'atelier `geodata/01-lac-saint-charles/`. Le champ `couche` de chaque
  * entité dit à quelle couche elle appartient.
  */
 

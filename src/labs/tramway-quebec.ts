@@ -33,7 +33,7 @@ import type { LabDefinition } from "./types";
  * C'est la limite principale de ce lab, et elle est dans la note.
  *
  * Données produites par `scripts/build-tramway-quebec.mjs` depuis l'atelier
- * `geodata/2026-10-tramway-quebec/`.
+ * `geodata/02-tramway-quebec/`.
  */
 
 /**
@@ -477,7 +477,7 @@ const tramwayQuebec: LabDefinition = {
 
     /**
      * Le tableau de bord — concept arrêté dans
-     * `geodata/2026-10-tramway-quebec/CONCEPTION.md`, § 10.
+     * `geodata/02-tramway-quebec/CONCEPTION.md`, § 10.
      *
      * Public large, registre formel : termes exacts, chacun défini sur place.
      * Toute valeur est comparée. Les couleurs reprennent celles de la carte —

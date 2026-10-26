@@ -11,7 +11,7 @@
  * toutes expire (504) sur une emprise de cette taille.
  *
  * Exécution : node scripts/analysis/tramway-reseau-pieton.mjs
- * Sortie    : geodata/2026-10-tramway-quebec/00-brut/osm/reseau-pieton-corridor.json
+ * Sortie    : geodata/02-tramway-quebec/00-brut/osm/reseau-pieton-corridor.json
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -22,7 +22,7 @@ const TYPES = [
   "service", "unclassified", "tertiary", "secondary", "primary", "cycleway",
 ];
 const SORTIE = path.join(
-  "geodata", "2026-10-tramway-quebec", "00-brut", "osm", "reseau-pieton-corridor.json",
+  "geodata", "02-tramway-quebec", "00-brut", "osm", "reseau-pieton-corridor.json",
 );
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));

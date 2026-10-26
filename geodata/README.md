@@ -16,7 +16,7 @@ geodata/
 ├── _commun/                ← ce qui sert à plusieurs projets
 ├── _archives/              ← projets terminés, gelés
 │
-└── 2026-09-lac-saint-charles/
+└── 01-lac-saint-charles/
     ├── 00-brut/            ← téléchargements intacts
     ├── 10-travail/         ← intermédiaires, jetables
     ├── 20-sig/             ← projets QGIS / ArcGIS / AutoCAD
@@ -27,7 +27,7 @@ geodata/
 ```
 
 Les étages sont un squelette, pas un carcan : un projet ajoute l'étage dont il a
-besoin. `2026-09-lac-saint-charles` a ainsi un `15-saisie-manuelle/`, parce que
+besoin. `01-lac-saint-charles` a ainsi un `15-saisie-manuelle/`, parce que
 son statut réglementaire n'existe dans aucun portail et se saisit à la main. Un
 projet qui commence par un relevé terrain, ou par une numérisation de plans
 papier, aurait le même besoin. La règle qui ne bouge pas, c'est le sens de
@@ -36,12 +36,14 @@ circulation : la donnée monte, elle ne redescend jamais.
 ### Nommer un dossier de projet
 
 ```
-AAAA-MM-sujet-en-minuscules
-2026-01-bassin-versant-chaudiere
-2026-03-reseau-cyclable-levis
+NN-sujet-en-minuscules
+04-bassin-versant-chaudiere
+05-reseau-cyclable-levis
 ```
 
-La date en tête range le dossier chronologiquement tout seul. Le sujet reste
+Le numéro en tête range les projets dans l'ordre où ils ont été lancés, et
+chaque projet se désigne d'un mot : « le 02 ». Deux chiffres suffisent
+jusqu'à 99 projets. Le sujet reste
 identique à l'identifiant du lab (`src/labs/`) et au nom de l'entrée
 (`content/entries/`) : un seul mot-clé traverse toute la chaîne, du
 téléchargement à l'article publié.
@@ -200,7 +202,7 @@ Les notes sont dans git, donc déjà à l'abri : c'est la raison pour laquelle
 
 ## Démarrer un projet
 
-1. copier `_gabarit-projet/` en `AAAA-MM-sujet/` ;
+1. copier `_gabarit-projet/` en `NN-sujet/`, avec le numéro suivant ;
 2. remplir `SOURCES.md` **au moment du téléchargement**, pas après — l'URL et la
    licence sont introuvables six mois plus tard ;
 3. travailler ;

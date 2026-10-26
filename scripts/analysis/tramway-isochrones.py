@@ -39,7 +39,7 @@ from shapely.geometry import LineString, mapping
 from shapely.ops import unary_union
 
 RACINE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ATELIER = os.path.join(RACINE, "geodata", "2026-10-tramway-quebec")
+ATELIER = os.path.join(RACINE, "geodata", "02-tramway-quebec")
 
 # --- paramètres de méthode -------------------------------------------------
 

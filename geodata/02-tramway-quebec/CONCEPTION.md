@@ -391,7 +391,7 @@ sujet. Le vocabulaire prévoyait le cas ; ce lab sera le premier à s'en servir.
 ## 8. La chaîne
 
 ```
-geodata/2026-10-tramway-quebec/          ← ce dossier
+geodata/02-tramway-quebec/               ← ce dossier
 scripts/analysis/tramway-quebec.py       ← la méthode, versionnée
 public/data/tramway-quebec-v1.geojson    ← le budget de poids décide de l'emprise
 src/labs/tramway-quebec.ts               ← + une ligne dans src/labs/index.ts

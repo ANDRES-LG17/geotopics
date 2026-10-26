@@ -3,12 +3,12 @@
 Copier ce dossier pour démarrer. Sous Windows :
 
 ```powershell
-Copy-Item geodata\_gabarit-projet geodata\2026-01-mon-sujet -Recurse
+Copy-Item geodata\_gabarit-projet geodata\04-mon-sujet -Recurse
 ```
 
 Puis, dans l'ordre :
 
-1. renommer le dossier en `AAAA-MM-sujet` — le `sujet` est le même mot-clé que
+1. renommer le dossier en `NN-sujet`, avec le numéro suivant — le `sujet` est le même mot-clé que
    l'identifiant du lab et le nom de l'entrée ;
 2. remplir l'en-tête de `SOURCES.md` et `JOURNAL.md` ;
 3. déposer les téléchargements dans `00-brut/`, **sans les ouvrir ni les

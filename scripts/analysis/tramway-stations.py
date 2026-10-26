@@ -31,7 +31,7 @@ nom de lieu a été essayé et écarté : Nominatim renvoyait D'Youville et
 Saint-Roch à des centaines de kilomètres, Sainte-Foy à un kilomètre.
 
 Exécution : python de QGIS (shapely, pyproj).
-Sortie : geodata/2026-10-tramway-quebec/15-saisie-manuelle/stations-tramcite.json
+Sortie : geodata/02-tramway-quebec/15-saisie-manuelle/stations-tramcite.json
 """
 
 import json
@@ -45,7 +45,7 @@ from shapely.geometry import LineString, MultiLineString, Point, shape
 from shapely.ops import nearest_points, transform, unary_union
 
 RACINE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ATELIER = os.path.join(RACINE, "geodata", "2026-10-tramway-quebec")
+ATELIER = os.path.join(RACINE, "geodata", "02-tramway-quebec")
 VERS_PLAN = Transformer.from_crs("EPSG:4326", "EPSG:2949", always_xy=True)
 VERS_WGS = Transformer.from_crs("EPSG:2949", "EPSG:4326", always_xy=True)
 

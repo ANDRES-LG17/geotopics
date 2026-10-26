@@ -23,7 +23,7 @@
  * annoncés. L'un d'eux, le raccord de la montée Mendel, vient d'un second
  * export : il porte un autre nom que les sept autres.
  *
- * Détail de la provenance dans `geodata/2026-10-tramway-quebec/SOURCES.md`.
+ * Détail de la provenance dans `geodata/02-tramway-quebec/SOURCES.md`.
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -32,7 +32,7 @@ import path from "node:path";
 const RACINE = process.cwd();
 const ENTREE = path.join(
   RACINE,
-  "geodata/2026-10-tramway-quebec/00-brut/osm",
+  "geodata/02-tramway-quebec/00-brut/osm",
   "overpass-futur-tramway-2026-10-01.json",
 );
 /**
@@ -43,7 +43,7 @@ const ENTREE = path.join(
  */
 const RACCORD = path.join(
   RACINE,
-  "geodata/2026-10-tramway-quebec/00-brut/osm",
+  "geodata/02-tramway-quebec/00-brut/osm",
   "overpass-tramcite-raccord-2026-10-08.json",
 );
 // v2 : raccord de la montée Mendel — la ligne est continue de Le Gendre à

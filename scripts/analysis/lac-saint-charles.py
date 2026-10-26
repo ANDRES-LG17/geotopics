@@ -25,7 +25,7 @@ import subprocess
 import sys
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-TALLER = os.path.join(RAIZ, "geodata", "2026-09-lac-saint-charles")
+TALLER = os.path.join(RAIZ, "geodata", "01-lac-saint-charles")
 GPKG = os.path.join(TALLER, "10-travail", "99-travail.gpkg")
 POBLACION = os.path.join(TALLER, "30-export", "lac-st-charles-population-v1.csv")
 SALIDA = os.path.join(RAIZ, "public", "data", "lac-st-charles-v5.geojson")
@@ -304,7 +304,7 @@ def main():
         "metadata": {
             "titre": "Lac Saint-Charles — bassin versant, parts municipales et lacs",
             "genere_par": "scripts/analysis/lac-saint-charles.py",
-            "atelier": "geodata/2026-09-lac-saint-charles/",
+            "atelier": "geodata/01-lac-saint-charles/",
             "srs": "EPSG:4326",
             "precision_coordonnees": "%d décimales (~11 m)" % DECIMALES,
             "bassin_retenu": "05090041",
