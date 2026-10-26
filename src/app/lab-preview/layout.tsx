@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
 
@@ -30,6 +31,8 @@ export default function LabPreviewLayout({
         suppressHydrationWarning
       >
         {children}
+        {/* Mesure d'audience Vercel, comme sur le reste du site. */}
+        <Analytics />
       </body>
     </html>
   );

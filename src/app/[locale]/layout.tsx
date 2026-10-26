@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Header from "@/components/Header";
@@ -89,6 +90,9 @@ export default async function LocaleLayout({
           </main>
           <Footer />
         </NextIntlClientProvider>
+        {/* Mesure d'audience Vercel : sans cookie, pages vues et provenance
+            (ex. LinkedIn). Invisible ; ne compte qu'en production. */}
+        <Analytics />
       </body>
     </html>
   );
