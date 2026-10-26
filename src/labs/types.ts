@@ -671,6 +671,195 @@ export type LabDefinition = {
    * JavaScript, et montre que les données sont ouvertes.
    */
   download?: string;
+  /**
+   * Portée sous le curseur : la tache de tout ce qu'on atteint depuis le point
+   * survolé, recalculée à chaque mouvement (voir `src/lib/reach.ts`).
+   *
+   * POURQUOI UN CALCUL EN VISITE — une tache par position du curseur ne se
+   * précalcule pas. Le site sert un graphe, et le navigateur refait le
+   * parcours en quelques dizaines de millisecondes. Au doigt, un appui
+   * remplace le survol.
+   */
+  /**
+   * Curseur de la carte, en valeur CSS (ex. `url("data:image/svg+xml,…") 16 16, crosshair`).
+   *
+   * Remplace la flèche partout sur la carte, sauf au-dessus d'une entité
+   * cliquable ou survolable, qui garde la main. Utile quand le curseur EST
+   * l'outil — le point de départ d'une portée.
+   */
+  cursor?: string;
+  reach?: {
+    /** Graphe exporté, ex. `/data/x-graphe-v1.json`. */
+    url: string;
+    /**
+     * Paliers de couleur, du plus court au plus long. Le dernier `max` est le
+     * budget de temps : au-delà, rien n'est peint.
+     */
+    bands: Array<{ max: number; color: string; opacity: number; label: Bilingual }>;
+    /**
+     * Scénario du graphe pour chaque scène, dans l'ordre de `scenes`
+     * (ex. `["A", "C", "D"]`). Absent = le premier scénario du graphe.
+     */
+    sceneScenario?: string[];
+    /** Phrase affichée tant que le curseur n'est pas sur la carte. */
+    hint?: Bilingual;
+    /**
+     * Noms des voies (`/data/x-noms-v1.json`), chargés après le graphe : le
+     * panneau dit sur quelle rue est le curseur.
+     */
+    names?: string;
+    /**
+     * Panneau latéral : la voie de départ et la surface de terre atteinte à
+     * plusieurs budgets de temps, en barres. Le parcours va jusqu'au plus long
+     * budget, même s'il dépasse les paliers peints.
+     */
+    panel?: {
+      /** Titre du bloc des surfaces. */
+      title: Bilingual;
+      /** Budgets mesurés, en minutes, ex. `[15, 30, 45]`. */
+      thresholds: number[];
+      /**
+       * Vitesse du disque de référence, en km/h : une barre pleine est la
+       * surface d'un disque parcouru à cette vitesse en ligne droite.
+       */
+      discSpeed: number;
+      /** Couleur des barres. */
+      barColor: string;
+      /** Note sous les barres : ce que veut dire une barre pleine. */
+      note: Bilingual;
+      /** Phrase tant qu'aucun départ n'est sous le curseur. */
+      empty: Bilingual;
+      /**
+       * Bandeau animé en tête du panneau : un paysage par saison, en boucle,
+       * qui bascule avec l'interrupteur été / hiver. Chaque saison : WebM,
+       * MP4 de repli, et une image fixe (affiche, et seule image si le
+       * système demande moins de mouvement).
+       */
+      header?: {
+        summer: { webm: string; mp4: string; poster: string };
+        winter: { webm: string; mp4: string; poster: string };
+        /** Description de l'image, pour les lecteurs d'écran. */
+        alt: Bilingual;
+      };
+    };
+    /**
+     * Interrupteur été / hiver dans le panneau. En hiver, tous les temps sont
+     * divisés par `speedRatio` (vitesse d'hiver / vitesse d'été) ; les barres
+     * montrent l'hiver devant l'été, avec l'écart.
+     */
+    /**
+     * Vue « rues exposées », au choix dans le panneau : la tache du dernier
+     * palier en un ton neutre, et par-dessus les voies exposées parcourues
+     * dans ce budget, tracées d'après le fichier des tronçons (chargé au
+     * premier passage dans la vue).
+     */
+    exposure?: {
+      /** Tronçons : coordonnées et attributs (`/data/x-troncons-v1.json`). */
+      segments: string;
+      label: Bilingual;
+      /** Libellé de la vue par défaut (les paliers de temps). */
+      timeLabel: Bilingual;
+      patch: { color: string; opacity: number; label: Bilingual };
+      line: { color: string; label: Bilingual };
+      /** Ce que mesure le chiffre du panneau, et sa définition. */
+      note: Bilingual;
+      /**
+       * Colmena de CONFORT : la tache découpée en hexagones ; chacun prend la
+       * couleur de son indice de confort (part pondérée des kilomètres
+       * parcourus dans l'hexagone, par classe de voie), et les hexagones où
+       * une piste s'interrompt sur une rue exposée passent en rouge.
+       */
+      hex?: {
+        /** Largeur d'un hexagone d'un côté à l'autre, en mètres au sol. */
+        size: number;
+        /** Poids de chaque classe de tronçon (0 piste … 4 à pied). */
+        weights: number[];
+        /** Rampe du confort, du plus faible au plus élevé (5 crans). */
+        ramp: string[];
+        /** Hexagone avec une coupure de piste. */
+        cut: { color: string; outline: string; label: Bilingual };
+        rampLabel: Bilingual;
+        /**
+         * Confort d'HIVER (tronçons `h` : 0 rien, 1 damé, 2 déneigé) : piste
+         * déneigée = poids d'été, damée = `packed`, sinon 0 ; rue calme =
+         * `calm` ; le reste comme l'été.
+         */
+        winter?: {
+          calm: number;
+          packed: number;
+          note: Bilingual;
+          /** Pistes entretenues dessinées l'hiver : couleur, libellés. */
+          line?: string;
+          /**
+           * Leur tracé complet (GeoJSON, propriété `h` : 1 damé, 2 déneigé),
+           * chargé au premier passage en hiver. Absent : tracé de nœud à nœud.
+           */
+          paths?: string;
+          /** Phrase des articles pour le panneau « L'hiver ici » (clic). */
+          context?: Bilingual;
+          /** Même chose l'été (« L'été ici » : corridors VivaCité réalisés). */
+          summerContext?: Bilingual;
+          /**
+           * L'été, les corridors VivaCité RÉALISÉS dessinés sur la colmena,
+           * comme les pistes déneigées l'hiver : tracé (GeoJSON), couleur,
+           * libellé.
+           */
+          summerPaths?: string;
+          summerLine?: string;
+          summerLabel?: Bilingual;
+          cleared?: Bilingual;
+          packedLabel?: Bilingual;
+        };
+        /**
+         * Corridors VivaCité (tronçons `cvc` : 1 réalisé, 2 projeté) : un
+         * interrupteur « aujourd'hui / avec les corridors » ; avec eux, toute
+         * voie d'un corridor compte 1, été comme hiver.
+         */
+        corridors?: { today: Bilingual; planned: Bilingual; line: string; label: Bilingual };
+      };
+    };
+    /**
+     * « Ville des 15 minutes » : un clic FIXE la tache, et les lieux qu'elle
+     * touche apparaissent, une couleur par fonction ; le panneau les liste par
+     * fonction, avec le plus proche et son temps d'accès.
+     */
+    places?: {
+      /** Lieux rattachés au graphe (`/data/x-lieux-v1.json`), chargés au premier clic. */
+      url: string;
+      title: Bilingual;
+      /** Une entrée par fonction, dans l'ordre du fichier (`fonctions`). */
+      functions: Array<{ id: string; label: Bilingual; color: string }>;
+      /** Libellé de chaque genre de lieu du fichier (`genres`), pour la fiche. */
+      genres?: Record<string, Bilingual>;
+      /** Phrase avant le premier clic. */
+      prompt: Bilingual;
+      /** La même, en une ligne, pour le panneau de portée. */
+      promptShort?: Bilingual;
+      /** Cadre et limites, sous la liste. */
+      note: Bilingual;
+      /**
+       * Bandeau du panneau d'itinéraire : un cycliste qui pédale, une vidéo
+       * en boucle par saison (WebM, MP4 de repli, image fixe). `winterRate`
+       * = vitesse de lecture de la vidéo d'hiver pour que son sol défile à
+       * `winter.speedRatio` de celui de l'été.
+       */
+      routeHeader?: {
+        summer: { webm: string; mp4: string; poster: string };
+        winter: { webm: string; mp4: string; poster: string };
+        winterRate: number;
+      };
+    };
+    winter?: {
+      speedRatio: number;
+      /**
+       * Paliers d'hiver : mêmes budgets que `bands`, autre teinte. La saison
+       * se lit à la couleur avant même l'interrupteur. Absent = `bands`.
+       */
+      bands?: Array<{ max: number; color: string; opacity: number; label: Bilingual }>;
+      /** Source et limite du modèle, sous les barres en hiver. */
+      note: Bilingual;
+    };
+  };
 };
 
 /** Emprise MapLibre `[[ouest, sud], [est, nord]]` à partir d'une vue à emprise. */
