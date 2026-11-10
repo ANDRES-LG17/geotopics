@@ -3923,6 +3923,12 @@ export default function LabMap({
       // qu'elle masque apparaissent une fraction de seconde.
       applyScene(0, false);
       mapRef.current = map;
+      // Mode vidéo (`?video=1`) : le script d'enregistrement
+      // (`scripts/video/`) pilote la caméra par la carte elle-même. Rien
+      // d'autre ne change : l'interface reste celle que voit le lecteur.
+      if (new URLSearchParams(window.location.search).get("video") === "1") {
+        (window as unknown as { __geoVideo?: { map: MapLibreMap } }).__geoVideo = { map };
+      }
     });
 
     /**

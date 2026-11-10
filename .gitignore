@@ -51,3 +51,8 @@ next-env.d.ts
 /geodata/**/*
 !/geodata/**/
 !/geodata/**/*.md
+
+# vidéos de carte (scripts/video) — images brutes et rendus, régénérables.
+# Une vidéo retenue pour le blog se copie dans `public/data/`.
+/.video-cache/
+/videos/

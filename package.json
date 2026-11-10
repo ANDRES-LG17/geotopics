@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "data:demo": "node scripts/build-demo-isochrones.mjs",
-    "topo": "node scripts/build-topo-scene.mjs"
+    "topo": "node scripts/build-topo-scene.mjs",
+    "video": "node scripts/video/make.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
@@ -30,6 +31,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "playwright": "^1.65.0",
     "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5"
