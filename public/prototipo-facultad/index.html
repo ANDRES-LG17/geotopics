@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototipo Facultad 3D</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#9ec9e8;font-family:system-ui,sans-serif}
+  #hud{position:fixed;left:12px;top:12px;color:#fff;background:rgba(0,0,0,.45);padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.5}
+  #hud b{color:#ffd37a}
+</style>
+</head>
+<body>
+<div id="hud"><b>Prototipo Facultad</b><br>WASD / flechas: caminar · Shift: correr<br>Arrastrar: girar cámara · Rueda: zoom · <b>V</b>: vista aérea</div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ---------- escena ---------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9ec9e8);
+scene.fog = new THREE.Fog(0x9ec9e8, 80, 220);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
+
+scene.add(new THREE.HemisphereLight(0xdfefff, 0x6b7a4a, 0.9));
+const sun = new THREE.DirectionalLight(0xfff1d6, 1.6);
+sun.position.set(40, 70, 30);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 220 });
+scene.add(sun);
+
+/* ---------- texturas procedurales ---------- */
+function canvasTex(w, h, draw, rx = 1, ry = 1) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+const rnd = (a, b) => a + Math.random() * (b - a);
+function brickDraw(base, mortar) {
+  return (g, w, h) => {
+    g.fillStyle = mortar; g.fillRect(0, 0, w, h);
+    const bh = 16, bw = 40;
+    for (let y = 0; y < h; y += bh)
+      for (let x = -(y / bh % 2) * bw / 2; x < w; x += bw) {
+        const [r, gg, b] = base;
+        const k = rnd(-14, 14);
+        g.fillStyle = `rgb(${r + k},${gg + k * .6},${b + k * .4})`;
+        g.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+      }
+  };
+}
+const texBrick = canvasTex(256, 256, brickDraw([196, 98, 58], '#9b8a7c'), 3, 3);
+const texBlock = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#8a8c88'; g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 32) for (let x = (y / 32 % 2) * 32; x < w + 64; x += 64) {
+    const k = rnd(-12, 12); g.fillStyle = `rgb(${150 + k},${152 + k},${148 + k})`;
+    g.fillRect(x + 2, y + 2, 60, 28);
+  }
+}, 2, 2);
+const texTile = canvasTex(256, 256, brickDraw([205, 120, 80], '#b59c8a'), 8, 8);
+const texGrass = canvasTex(128, 128, (g, w, h) => {
+  g.fillStyle = '#5c8a3a'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 600; i++) { g.fillStyle = `rgba(${rnd(40, 90)},${rnd(110, 160)},${rnd(30, 70)},.5)`; g.fillRect(rnd(0, w), rnd(0, h), 3, 3); }
+}, 40, 40);
+
+const mat = {
+  brick: new THREE.MeshLambertMaterial({ map: texBrick }),
+  block: new THREE.MeshLambertMaterial({ map: texBlock }),
+  tile: new THREE.MeshLambertMaterial({ map: texTile }),
+  grass: new THREE.MeshLambertMaterial({ map: texGrass }),
+  roof: new THREE.MeshLambertMaterial({ color: 0xb8bcbc }),
+  glass: new THREE.MeshPhongMaterial({ color: 0x5f8fb0, specular: 0xffffff, shininess: 90, transparent: true, opacity: .78 }),
+  win: new THREE.MeshPhongMaterial({ color: 0x3d5f78, specular: 0xaaccee, shininess: 80 }),
+  white: new THREE.MeshLambertMaterial({ color: 0xf4f4f0 }),
+  road: new THREE.MeshLambertMaterial({ color: 0x55585c }),
+  water: new THREE.MeshPhongMaterial({ color: 0x4fb3d6, shininess: 100 }),
+  red: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
+  dark: new THREE.MeshLambertMaterial({ color: 0x333333 }),
+};
+
+/* ---------- terreno: plano en la plaza, ladera hacia el fondo (-z) ---------- */
+const terrainH = (x, z) => {
+  const slope = Math.max(0, -z - 26) * 0.55 + Math.max(0, Math.abs(x) - 60) * 0.25;
+  return slope + (slope > 0 ? Math.sin(x * .13) * Math.cos(z * .11) * 2 : 0);
+};
+{
+  const geo = new THREE.PlaneGeometry(400, 400, 160, 160);
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, terrainH(p.getX(i), p.getZ(i)) - 0.05);
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, mat.grass); m.receiveShadow = true; scene.add(m);
+}
+
+/* ---------- utilidades ---------- */
+const colliders = []; // AABB {x0,x1,z0,z1}
+function box(x, z, w, d, h, material, { y = 0, collide = true, shadow = true } = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  m.position.set(x, y + h / 2, z);
+  m.castShadow = shadow; m.receiveShadow = true;
+  scene.add(m);
+  if (collide) colliders.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 });
+  return m;
+}
+// bandas de ventanas en las fachadas de un volumen de ladrillo
+function windows(x, z, w, d, h, { floors = Math.floor(h / 4), faces = ['+z', '-x', '+x'] } = {}) {
+  for (let f = 0; f < floors; f++) {
+    const y = 2.6 + f * 4;
+    for (const face of faces) {
+      const horiz = face.endsWith('z');
+      const len = (horiz ? w : d) - 3;
+      if (len < 2) continue;
+      const g = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.7), mat.win);
+      const s = face[0] === '+' ? 1 : -1;
+      if (horiz) { g.position.set(x, y, z + s * (d / 2 + 0.03)); if (s < 0) g.rotation.y = Math.PI; }
+      else { g.position.set(x + s * (w / 2 + 0.03), y, z); g.rotation.y = s * Math.PI / 2; }
+      scene.add(g);
+    }
+  }
+}
+function volume(x, z, w, d, h, opts = {}) {
+  const y = opts.y ?? 0;
+  box(x, z, w, d, h, mat.brick, { y });
+  box(x, z, w + .6, d + .6, .5, mat.roof, { y: y + h, collide: false }); // cubierta plana
+  box(x, z, w + .2, d + .2, 1.2, mat.brick, { y: y + h, collide: false }); // antepecho
+  if (!opts.noWindows) windows(x, z, w, d, h, opts);
+}
+
+/* ---------- plaza + vía ---------- */
+box(0, 4, 52, 44, .3, mat.tile, { y: -.3, collide: false, shadow: false });
+box(0, 38, 400, 10, .1, mat.road, { y: -.02, collide: false, shadow: false });
+
+/* ---------- edificio principal ---------- */
+// bloque derecho (ladrillo) con la torre de vidrio delante
+volume(22, -8, 14, 16, 16);
+volume(32, -14, 10, 10, 10);
+// torre cilíndrica de vidrio
+const tower = new THREE.Mesh(new THREE.CylinderGeometry(3.8, 3.8, 20, 32), mat.glass);
+tower.position.set(10, 10, -5); tower.castShadow = true; scene.add(tower);
+for (let i = 0; i < 7; i++) { // entrepisos
+  const r = new THREE.Mesh(new THREE.TorusGeometry(3.85, .12, 6, 32), mat.dark);
+  r.rotation.x = Math.PI / 2; r.position.set(10, 1 + i * 3, -5); scene.add(r);
+}
+for (let i = 0; i < 12; i++) { // marcos verticales
+  const a = i / 12 * Math.PI * 2;
+  box(10 + Math.cos(a) * 3.85, -5 + Math.sin(a) * 3.85, .25, .25, 20, mat.dark, { collide: false, shadow: false });
+}
+const disc = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, .5, 32), mat.white);
+disc.position.set(10, 20.3, -5); disc.castShadow = true; scene.add(disc);
+colliders.push({ x0: 6, x1: 14, z0: -9, z1: -1 });
+// bloque que une torre y ala izquierda
+volume(0, -8, 10, 14, 14);
+// ala izquierda escalonada
+volume(-12, -10, 14, 10, 8);
+box(-24, -4, 10, 10, 6, mat.block);                       // volumen de concreto (patio)
+box(-24, -4, 10.6, 10.6, .5, mat.roof, { y: 6, collide: false });
+// edificio superior del fondo, sobre la ladera
+const yUp = terrainH(-8, -36);
+volume(-8, -36, 24, 9, 8, { y: yUp, faces: ['+z'], floors: 2 });
+box(-8, -32, 26, 8, yUp, mat.block, { collide: false });
+
+/* ---------- muros/rampas de concreto y escaleras ---------- */
+box(-6, 4, 18, 1, 1.6, mat.block);
+box(-15, 0, 1, 10, 1.6, mat.block);
+box(4, 12, 10, 1, 1.2, mat.block);
+for (let i = 0; i < 6; i++) box(-8, 8 + i * .9, 5, .9, .22 * (6 - i), mat.block, { collide: false }); // escalera exterior
+box(22, 4, 1, 14, 1.4, mat.block);
+
+/* ---------- fuente curva ---------- */
+const rim = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, .8, 36), mat.brick);
+rim.position.set(24, .4, 16); rim.receiveShadow = true; scene.add(rim);
+const water = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, .85, 36), mat.water);
+water.position.set(24, .42, 16); scene.add(water);
+colliders.push({ x0: 19.5, x1: 28.5, z0: 11.5, z1: 20.5 });
+
+/* ---------- sombrillas y bancas ---------- */
+function umbrella(x, z, color) {
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 2.6, 8), mat.dark);
+  pole.position.set(x, 1.3, z); scene.add(pole);
+  const top = new THREE.Mesh(new THREE.ConeGeometry(2, .9, 12), new THREE.MeshLambertMaterial({ color }));
+  top.position.set(x, 2.8, z); top.castShadow = true; scene.add(top);
+  box(x, z, 1.4, 1.4, .8, new THREE.MeshLambertMaterial({ color: 0x7a5230 }), { collide: false });
+}
+umbrella(2, 6, 0xc8202a); umbrella(-6, 14, 0xc8202a); umbrella(12, 8, 0xe8e0d0);
+
+/* ---------- letrero ---------- */
+{
+  const tex = canvasTex(1024, 256, (g, w, h) => {
+    g.fillStyle = '#c9a24a'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#3a2a0a'; g.textAlign = 'center';
+    g.font = 'bold 70px sans-serif'; g.fillText('FACULTAD DE MEDIO', w / 2, 100);
+    g.fillText('AMBIENTE Y R. NATURALES', w / 2, 190);
+  });
+  const s = new THREE.Mesh(new THREE.PlaneGeometry(9, 2.2), new THREE.MeshBasicMaterial({ map: tex }));
+  s.position.set(0, 8.5, 0.05); scene.add(s);
+}
+
+/* ---------- árboles (instanciados) ---------- */
+{
+  const N = 700;
+  const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(.25, .35, 2, 5), new THREE.MeshLambertMaterial({ color: 0x5a3b22 }), N);
+  const crownA = new THREE.InstancedMesh(new THREE.ConeGeometry(2.2, 7, 7), new THREE.MeshLambertMaterial({ color: 0x2e5a2c }), N);
+  const crownB = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.6, 0), new THREE.MeshLambertMaterial({ color: 0x4a8a3a }), N);
+  crownA.castShadow = crownB.castShadow = true;
+  const d = new THREE.Object3D(); let n = 0, tries = 0;
+  while (n < N && tries++ < 20000) {
+    const x = rnd(-150, 150), z = rnd(-150, 33);
+    if (Math.abs(x) < 38 && z > -26 && z < 30) continue;   // deja libre la plaza
+    if (z > -46 && z < -24 && Math.abs(x + 8) < 20) continue; // edificio superior
+    const y = terrainH(x, z), s = rnd(.8, 1.6), pine = Math.random() < .6;
+    d.rotation.set(0, rnd(0, 6), 0); d.scale.setScalar(s);
+    d.position.set(x, y + 1 * s, z); d.updateMatrix(); trunk.setMatrixAt(n, d.matrix);
+    d.position.set(x, y + (pine ? 5.2 : 4) * s, z);
+    d.updateMatrix(); (pine ? crownA : crownB).setMatrixAt(n, d.matrix);
+    (pine ? crownB : crownA).setMatrixAt(n, new THREE.Matrix4().makeScale(0, 0, 0));
+    n++;
+  }
+  [trunk, crownA, crownB].forEach(m => { m.count = n; scene.add(m); });
+}
+// hortensias azules/rosadas junto a la plaza
+for (const [x, z, c] of [[-16, 12, 0xcfd6ff], [-18, 14, 0xffd0e6], [30, 6, 0xcfd6ff]]) {
+  const h = new THREE.Mesh(new THREE.IcosahedronGeometry(1.4, 1), new THREE.MeshLambertMaterial({ color: c }));
+  h.position.set(x, 1.3, z); scene.add(h);
+}
+
+/* ---------- jugador ---------- */
+const player = new THREE.Group();
+const body = new THREE.Mesh(new THREE.CapsuleGeometry(.4, .9, 4, 10), new THREE.MeshLambertMaterial({ color: 0xffb300 }));
+body.position.y = .85; body.castShadow = true; player.add(body);
+const nose = new THREE.Mesh(new THREE.BoxGeometry(.25, .2, .3), mat.dark); nose.position.set(0, 1.2, .38); player.add(nose);
+player.position.set(0, 0, 22);
+scene.add(player);
+
+/* ---------- controles ---------- */
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 4; controls.maxDistance = 120;
+camera.position.set(0, 8, 40); controls.target.copy(player.position).setY(1.2);
+let aerial = false;
+const keys = {};
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyV') {
+    aerial = !aerial;
+    if (aerial) { camera.position.set(-35, 55, 50); controls.target.set(8, 4, -6); }
+    else controls.target.copy(player.position).setY(1.2);
+  }
+});
+addEventListener('keyup', e => keys[e.code] = false);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+function blocked(x, z) {
+  const r = .5;
+  return colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r);
+}
+const clock = new THREE.Clock(), fwd = new THREE.Vector3(), right = new THREE.Vector3();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), .05);
+  if (!aerial) {
+    camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+    right.crossVectors(fwd, new THREE.Vector3(0, 1, 0));
+    const mv = new THREE.Vector3();
+    if (keys.KeyW || keys.ArrowUp) mv.add(fwd);
+    if (keys.KeyS || keys.ArrowDown) mv.sub(fwd);
+    if (keys.KeyD || keys.ArrowRight) mv.add(right);
+    if (keys.KeyA || keys.ArrowLeft) mv.sub(right);
+    if (mv.lengthSq() > 0) {
+      mv.normalize().multiplyScalar((keys.ShiftLeft || keys.ShiftRight ? 11 : 6) * dt);
+      const nx = player.position.x + mv.x, nz = player.position.z + mv.z;
+      const before = player.position.clone();
+      if (!blocked(nx, player.position.z)) player.position.x = nx;
+      if (!blocked(player.position.x, nz)) player.position.z = nz;
+      player.position.y = Math.max(0, terrainH(player.position.x, player.position.z));
+      player.rotation.y = Math.atan2(mv.x, mv.z);
+      camera.position.add(player.position.clone().sub(before));
+    }
+    controls.target.lerp(player.position.clone().setY(player.position.y + 1.2), .2);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
