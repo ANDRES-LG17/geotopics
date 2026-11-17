@@ -52,6 +52,9 @@ export default {
       // Le crédit de la carte, replié en « i » : le pied de page porte déjà
       // la source complète (OpenStreetMap…), visible à l'image.
       await v.page.addStyleTag({ content: ".maplibregl-ctrl-attrib-inner{display:none!important}" });
+      // La ligne des sources sous la carte, retirée de la vidéo à la demande
+      // de l'auteur (elle reste sur le site) ; les sources vont dans le post.
+      await v.page.addStyleTag({ content: "figcaption{display:none!important}" });
       await v.jump(LARGE);
       // Préchargement : les vidéos d'hiver et l'hiver des trois graphes.
       await v.at(SAINT_ROCH);

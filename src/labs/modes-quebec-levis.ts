@@ -144,8 +144,8 @@ const modesQuebecLevis: LabDefinition = {
   ],
 
   attribution: {
-    fr: "OpenStreetMap (ODbL) · Ville de Québec, ISQ — Données Québec (CC-BY 4.0) · RNCan, HRDEM (Licence du gouvernement ouvert – Canada) · Bandeau : illustration et animation générées par IA (Google Gemini, Veo)",
-    en: "OpenStreetMap (ODbL) · City of Québec, ISQ — Données Québec (CC-BY 4.0) · NRCan, HRDEM (Open Government Licence – Canada) · Banner: AI-generated illustration and animation (Google Gemini, Veo)",
+    fr: "OpenStreetMap (ODbL) · Ville de Québec, ISQ — Données Québec (CC-BY 4.0) · RNCan, HRDEM (Licence du gouvernement ouvert – Canada)",
+    en: "OpenStreetMap (ODbL) · City of Québec, ISQ — Données Québec (CC-BY 4.0) · NRCan, HRDEM (Open Government Licence – Canada)",
   },
 
   note: {
