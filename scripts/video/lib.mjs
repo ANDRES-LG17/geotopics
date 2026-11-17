@@ -78,7 +78,11 @@ export async function record(story, { format, lang, base, dir }) {
     // La carte est en WebGL : on veut la vraie carte graphique (ANGLE / D3D11).
     args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"],
   });
-  const page = await browser.newPage({ viewport: { width: F.w, height: F.h }, deviceScaleFactor: F.dsf });
+  // Fenêtre de CAPTURE : celle du format, sauf si le scénario en demande une
+  // autre (ex. 540 × 675 en 4× : la mise en page du téléphone, même sortie
+  // 1080 × 1350). Le rapport largeur / hauteur doit rester celui du format.
+  const C = story.capture ?? F;
+  const page = await browser.newPage({ viewport: { width: C.w, height: C.h }, deviceScaleFactor: C.dsf });
   await page.clock.install();
   const url = `${base}${story.path}${story.path.includes("?") ? "&" : "?"}video=1${lang === "en" ? "&locale=en" : ""}`;
   console.log("→", url);
@@ -95,7 +99,9 @@ export async function record(story, { format, lang, base, dir }) {
 
   // Curseur visible : le curseur du système n'est pas dans les captures. On
   // reprend celui du lab (la bicyclette), agrandi pour un écran de téléphone.
-  await page.evaluate(() => {
+  // Taille : 44 px dans une fenêtre de 1080, à l'échelle d'une fenêtre plus petite.
+  const taille = Math.max(26, Math.round((44 * C.w) / F.w));
+  await page.evaluate((taille) => {
     const m = window.__geoVideo.map;
     let src = null;
     for (let el = m.getCanvas(); el && !src; el = el.parentElement) {
@@ -105,11 +111,11 @@ export async function record(story, { format, lang, base, dir }) {
     }
     const d = document.createElement("div");
     d.id = "__curseur";
-    d.style.cssText = "position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;z-index:2147483647;pointer-events:none;display:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))";
+    d.style.cssText = `position:fixed;left:0;top:0;width:${taille}px;height:${taille}px;margin:${-taille / 2}px 0 0 ${-taille / 2}px;z-index:2147483647;pointer-events:none;display:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))`;
     d.innerHTML = `<div id="__onde" style="position:absolute;inset:0;border-radius:50%;border:3px solid #104281;opacity:0"></div>` +
       (src ? `<img src="${src.replace(/"/g, "&quot;")}" style="width:100%;height:100%">` : `<div style="width:100%;height:100%;border-radius:50%;background:#fff;border:3px solid #104281"></div>`);
     document.body.appendChild(d);
-  });
+  }, taille);
 
   const proj = (lonlat) =>
     page.evaluate(([lon, lat]) => {
@@ -125,7 +131,7 @@ export async function record(story, { format, lang, base, dir }) {
       return { center: [c.lng, c.lat], zoom: m.getZoom(), bearing: m.getBearing(), pitch: m.getPitch() };
     });
 
-  const full = { x: 0, y: 0, w: F.w * F.dsf, h: F.h * F.dsf };
+  const full = { x: 0, y: 0, w: C.w * C.dsf, h: C.h * C.dsf };
   const state = {
     f: 0,
     cursor: null, // [lon, lat]
@@ -152,10 +158,10 @@ export async function record(story, { format, lang, base, dir }) {
       return { ...full };
     }
     const p = { top: 24, right: 24, bottom: 24, left: 24, ...pad };
-    let x = (r.x - p.left) * F.dsf;
-    let y = (r.y - p.top) * F.dsf;
-    let w = (r.w + p.left + p.right) * F.dsf;
-    let h = (r.h + p.top + p.bottom) * F.dsf;
+    let x = (r.x - p.left) * C.dsf;
+    let y = (r.y - p.top) * C.dsf;
+    let w = (r.w + p.left + p.right) * C.dsf;
+    let h = (r.h + p.top + p.bottom) * C.dsf;
     const A = F.w / F.h;
     // Au format de sortie, sans jamais agrandir au-delà de la capture.
     if (w / h < A) { const nw = h * A; x -= (nw - w) / 2; w = nw; } else { const nh = w / A; y -= (nh - h) / 2; h = nh; }
@@ -285,6 +291,8 @@ export async function record(story, { format, lang, base, dir }) {
         sub: sub ? v.t(sub) : null,
         kicker: extra.kicker ? v.t(extra.kicker) : null,
         url: extra.url ?? null,
+        // « top » : le titre en haut de l'image (quand le bas porte le propos).
+        pos: extra.pos ?? null,
         start: state.f / FPS,
         end: state.f / FPS + sec,
       });
@@ -300,17 +308,18 @@ export async function record(story, { format, lang, base, dir }) {
   const t0 = Date.now();
   await story.run(v);
   await browser.close();
-  await writeFile(path.join(dir, "timeline.json"), JSON.stringify({ format, lang, fps: FPS, frames: state.f, crops: state.crops, captions: state.captions, poster: story.poster ?? 0.5 }, null, 1));
+  await writeFile(path.join(dir, "timeline.json"), JSON.stringify({ format, lang, fps: FPS, frames: state.f, crops: state.crops, captions: state.captions, poster: story.poster ?? 0.5, accent: story.accent ?? null }, null, 1));
   console.log(`  ${state.f} images en ${((Date.now() - t0) / 1000).toFixed(0)} s`);
 }
 
 /* ───────────────────────────── 2. OVERLAY ───────────────────────────── */
 
-const OVERLAY_HTML = (w, h) => `<!doctype html><html><head><meta charset="utf-8">
+const OVERLAY_HTML = (w, h, accent = "#c84a12") => `<!doctype html><html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=block" rel="stylesheet">
 <style>
-:root{--u:${Math.min(w, h) / 1080}px;--encre:#14261f;--gris:#475569;--accent:#c84a12}
+:root{--u:${Math.min(w, h) / 1080}px;--encre:#14261f;--gris:#475569;--accent:${accent}}
+.c.top{top:4%;bottom:auto}
 html,body{margin:0;width:${w}px;height:${h}px;background:transparent;overflow:hidden;font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .c{position:absolute;left:50%;transform:translate(-50%,0);box-sizing:border-box;color:var(--encre)}
 .carte{background:rgba(255,255,255,.95);border-radius:calc(24*var(--u));box-shadow:0 calc(10*var(--u)) calc(40*var(--u)) rgba(20,38,31,.22);padding:calc(30*var(--u)) calc(40*var(--u));border-left:calc(10*var(--u)) solid var(--accent)}
@@ -332,7 +341,7 @@ window.render = (list) => {
   r.innerHTML = "";
   for (const c of list) {
     const d = document.createElement("div");
-    d.className = "c " + c.style + (c.style === "end" ? "" : " carte");
+    d.className = "c " + c.style + (c.style === "end" ? "" : " carte") + (c.pos === "top" ? " top" : "");
     d.style.opacity = c.o;
     const dy = (1 - c.o) * 24;
     if (c.style !== "end") d.style.transform = "translate(-50%," + dy + "px)";
@@ -355,7 +364,7 @@ export async function overlay({ dir }) {
   await mkdir(out, { recursive: true });
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: F.w, height: F.h } });
-  await page.setContent(OVERLAY_HTML(F.w, F.h), { waitUntil: "networkidle" });
+  await page.setContent(OVERLAY_HTML(F.w, F.h, tl.accent ?? undefined), { waitUntil: "networkidle" });
   await page.evaluate(() => document.fonts.ready);
   const FONDU = 0.3;
   const cache = new Map();

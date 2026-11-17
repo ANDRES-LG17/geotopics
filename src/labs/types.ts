@@ -492,9 +492,55 @@ export type LabPanelConfig = {
   method?: { title: Bilingual; text: Bilingual };
 };
 
+/** Vidéo en boucle d'une saison : WebM, MP4 en repli, image fixe. */
+export type LabSeasonMedia = { webm: string; mp4: string; poster: string };
+
+/**
+ * Un mode de déplacement du lab « trois modes » : son graphe (même grille que
+ * les autres), ses couleurs et son modèle d'hiver.
+ */
+export type LabTravelMode = {
+  id: "pied" | "velo" | "auto";
+  label: Bilingual;
+  /** Graphe au format de `src/lib/reach.ts`. */
+  url: string;
+  /** Scénario du graphe ; `winterScenario` le remplace l'hiver. */
+  scenario: string;
+  winterScenario?: string;
+  /** Facteur de vitesse uniforme l'hiver (0,79 = 21 % plus lent). */
+  winterSpeedRatio?: number;
+  /** Couleur de la tache et des barres, l'été puis l'hiver. */
+  color: { summer: string; winter: string };
+  /** Bord de la tache, en tirets : teinte plus foncée, motif propre au mode. */
+  outline: { summer: string; winter: string; dash: number[] };
+  /** Vitesse du disque de référence des barres (km/h, en ligne droite). */
+  discSpeed: number;
+  /** Bandeau animé ; absent = pictogramme en attendant la vidéo. */
+  media?: { summer: LabSeasonMedia; winter: LabSeasonMedia; winterRate: number };
+};
+
 export type LabDefinition = {
   /** Identifiant stable, repris dans le champ `lab` d'une entrée. */
   id: string;
+  /**
+   * Lab « trois modes » : trois taches de 15 min superposées (à pied, à vélo,
+   * en auto), une carte par mode sous la carte. Présent = `ModesMap` remplace
+   * `LabMap`.
+   */
+  modes?: {
+    list: LabTravelMode[];
+    /** Budgets mesurés dans les barres ; le dernier est la tache peinte. */
+    thresholds: number[];
+    opacity: number;
+    /** Fond de carte l'hiver : couleurs du fond et de l'eau du style. */
+    winterBasemap?: { background: string; water: string };
+    /** Noms des voies du graphe du mode `namesMode`, pour dire d'où l'on part. */
+    names: string;
+    namesMode: LabTravelMode["id"];
+    title: Bilingual;
+    empty: Bilingual;
+    hint: Bilingual;
+  };
   /** Sources de données : clé → chemin public versionné, ex. `/data/x-v1.geojson`. */
   sources: Record<string, string>;
   layers: LabLayer[];

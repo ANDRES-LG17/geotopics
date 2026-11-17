@@ -24,8 +24,11 @@ export default function BandeauVelo({
   hiver,
   rapide,
   actif = true,
+  className = "aspect-[5/2] w-full",
   children,
 }: {
+  /** Taille du cadre ; 5:2 par défaut, la proportion des vidéos. */
+  className?: string;
   media: { summer: MediaSaison; winter: MediaSaison; winterRate: number };
   hiver: boolean;
   /** Le trajet se dessine sur la carte : le cycliste accélère. */
@@ -118,7 +121,7 @@ export default function BandeauVelo({
   );
 
   return (
-    <div className="relative aspect-[5/2] w-full shrink-0 overflow-hidden">
+    <div className={`relative shrink-0 overflow-hidden ${className}`}>
       {couche(media.summer, !hiver, ete)}
       {couche(media.winter, hiver, hivers)}
       {children}

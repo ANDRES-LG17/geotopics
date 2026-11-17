@@ -1,6 +1,7 @@
 import type { LabDefinition } from "./types";
 import demoIsochrones from "./demo-isochrones";
 import lacSaintCharles from "./lac-saint-charles";
+import modesQuebecLevis from "./modes-quebec-levis";
 import tramwayQuebec from "./tramway-quebec";
 import veloQuebecLevis from "./velo-quebec-levis";
 
@@ -24,6 +25,7 @@ import veloQuebecLevis from "./velo-quebec-levis";
 export const LABS = {
   "demo-isochrones": demoIsochrones,
   "lac-saint-charles": lacSaintCharles,
+  "modes-quebec-levis": modesQuebecLevis,
   "tramway-quebec": tramwayQuebec,
   "velo-quebec-levis": veloQuebecLevis,
 } as const satisfies Record<string, LabDefinition>;

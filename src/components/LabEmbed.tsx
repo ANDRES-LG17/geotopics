@@ -33,6 +33,14 @@ const LabMap = dynamic(() => import("./LabMap"), {
   ),
 });
 
+/** Le lab « trois modes » a sa propre carte : `LabMap` reste celle du vélo. */
+const ModesMap = dynamic(() => import("./ModesMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="topo-pattern-on-dark h-full min-h-[420px] w-full animate-pulse rounded-xl border border-line bg-[#08150f]" />
+  ),
+});
+
 export default function LabEmbed({
   labId,
   title,
@@ -63,13 +71,17 @@ export default function LabEmbed({
           : "m-0 h-[70vh] min-h-[420px] sm:h-[78vh]"
       }
     >
-      <LabMap
-        lab={lab}
-        label={title}
-        errorLabel={t("labError")}
-        locale={locale}
-        fill
-      />
+      {lab.modes ? (
+        <ModesMap lab={lab} label={title} errorLabel={t("labError")} locale={locale} fill />
+      ) : (
+        <LabMap
+          lab={lab}
+          label={title}
+          errorLabel={t("labError")}
+          locale={locale}
+          fill
+        />
+      )}
 
       {/*
         En mode plein, seule l'attribution reste — les licences CC-BY des jeux
